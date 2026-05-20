@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>維修與零件一體化管理系統 (支援 Excel 匯入)</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://tailwindcss.com"></script>
+    <!-- 引入 SheetJS 官方開源 Excel 解析套件，確保網頁具備讀取試算表能力 -->
+    <script src="https://jsdelivr.net"></script>
+</head>
+<body class="bg-slate-50 font-sans antialiased pb-24 text-slate-800">
+
+    <!-- ==================== 密碼驗證遮罩層 ==================== -->
+    <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-6 border border-slate-100">
+            <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-2xl mx-auto shadow-sm">🔒</div>
+            <div class="space-y-2">
+                <h2 class="text-xl font-bold text-slate-800">安全防護鎖</h2>
+                <p class="text-sm text-slate-400">請輸入管理密碼以解鎖系統面板</p>
+            </div>
+            <div class="space-y-3">
+                <input type="password" id="systemPassword" placeholder="請輸入密碼" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-center text-lg font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none tracking-widest">
+                <p id="loginError" class="text-xs text-rose-500 font-semibold hidden">❌ 密碼錯誤，請重新輸入</p>
+            </div>
+            <button onclick="verifyPassword()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition shadow-sm tracking-wide">
+                解鎖系統
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== 核心系統網頁內容 ==================== -->
+    <div id="mainContent" class="hidden opacity-0 transition-opacity duration-300">
+        
+        <!-- 頂部導覽列 -->
+        <header class="bg-slate-900 text-white shadow-sm sticky top-0 z-50">
+            <div class="max-w-[95%] mx-auto px-6 py-4 flex justify-between items-center">
+                <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">🔧 <span>維修與零件一體化管理系統</span></h1>
+                <div class="flex items-center gap-4">
+                    <div class="bg-slate-800 p-1 rounded-lg border border-slate-700 flex space-x-1">
+                        <button id="tabRepairBtn" onclick="switchTab('repair')" class="px-4 py-1.5 rounded-md text-xs font-bold transition bg-blue-600 text-white">💼 維修客戶管理</button>
+                        <button id="tabPartBtn" onclick="switchTab('part')" class="px-4 py-1.5 rounded-md text-xs font-bold transition text-slate-400 hover:text-white">⚙️ 零件庫存管理</button>
+                    </div>
+                    <button onclick="lockSystem()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md font-medium border border-slate-700 transition">🔒 安全登出</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主區塊 -->
+        <main class="max-w-[95%] mx-auto px-6 mt-8 space-y-8">
+            
+            <!-- ==================== [分頁一] 維修客戶管理介面 ==================== -->
+            <div id="sectionRepair" class="space-y-8">
+                <!-- 維修單輸入（單行橫向） -->
+                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                        <h2 id="repairFormTitle" class="text-sm font-bold text-slate-700">📝 建立新維修單</h2>
+                        <button id="cancelRepairEditBtn" onclick="cancelRepairEdit()" class="hidden text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded-md shadow-sm font-semibold transition">取消修改</button>
+                    </div>
+                    <div class="overflow-x-auto p-5 bg-slate-50/20">
+                        <form id="repairForm" class="flex items-center space-x-3 whitespace-nowrap min-w-max">
+                            <input type="hidden" id="repairRecordId">
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">送修日期*</label>
+                                <input type="date" id="receivedDate" required class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">客戶姓名*</label>
+                                <input type="text" id="customerName" required placeholder="姓名" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">電話號碼*</label>
+                                <input type="tel" id="customerPhone" required placeholder="09xxxxxxxx" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">產品型號*</label>
+                                <input type="text" id="productModel" required placeholder="型號" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">數量*</label>
+                                <input type="number" id="quantity" min="1" value="1" required class="w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-rose-600">故障原因*</label>
+                                <input type="text" id="issueReason" required placeholder="描述故障狀況..." class="w-48 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-emerald-700">更換零件</label>
+                                <input type="text" id="replacedParts" placeholder="無則填無" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">維修費用</label>
+                                <input type="number" id="repairCost" min="0" placeholder="留白為尚未報價" class="w-28 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">取件日期</label>
+                                <input type="date" id="pickupDate" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">託運單號</label>
+                                <input type="text" id="shippingNo" placeholder="物流單號" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <button type="submit" id="repairSubmitBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]">💾 儲存資料</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- 維修搜尋大看板 -->
+                <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                    <h2 class="text-sm font-bold text-slate-700">🔍 快速搜尋客戶電話與資料修改</h2>
+                    <div class="flex gap-3">
+                        <input type="text" id="searchPhone" placeholder="請輸入完整的客戶電話號碼，系統將自動為您篩選..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:outline-none focus:border-blue-500">
+                        <button onclick="clearRepairSearch()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 border rounded-lg text-xs font-semibold transition">清除搜尋</button>
+                    </div>
+                    <div id="repairSearchResultWrapper" class="pt-2 hidden">
+                        <div class="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-100 px-4 py-2 rounded-lg mb-3">🎯 搜尋到 <span id="repairSearchCount" class="font-extrabold text-sm text-amber-600">0</span> 筆維修資料：</div>
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-inner">
+                            <table class="w-full text-left border-collapse bg-white text-xs"><tbody id="repairSearchTableBody" class="divide-y divide-slate-200"></tbody></table>
+                        </div>
+                    </div>
+                    <div id="repairSearchNoDataMessage" class="hidden text-center py-4 text-slate-400 text-xs bg-slate-50 rounded-lg border border-dashed">❌ 找不到符合此電話號碼的維修紀錄</div>
+                </section>
+
+                <!-- 最新 10 筆維修單列表 -->
+                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="px-6 py-3.5 bg-slate-800 text-white flex justify-between items-center">
+                        <h2 class="text-xs font-bold tracking-wide">🗄️ 系統最新輸入資料（限展示前 10 筆檔案）</h2>
+                        <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded font-mono">總案量：<span id="repairTotalCount" class="text-white font-bold">0</span> 筆</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs"><tbody id="repairLatestTableBody" class="divide-y divide-slate-200"></tbody></table>
+                    </div>
+                    <div id="repairLatestNoDataMessage" class="hidden text-center py-12 text-slate-400 text-xs">📭 目前系統中尚無維修資料。</div>
+                </section>
+            </div>
+
+            <!-- ==================== [分頁二] 零件庫存管理介面 ==================== -->
+            <div id="sectionPart" class="space-y-8 hidden">
+                <!-- 零件輸入（單行橫向） -->
+                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                        <h2 id="partFormTitle" class="text-sm font-bold text-slate-700">⚙️ 新增庫存零件資料</h2>
+                        <button id="cancelPartEditBtn" onclick="cancelPartEdit()" class="hidden text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded-md shadow-sm font-semibold transition">取消修改</button>
+                    </div>
+                    <div class="overflow-x-auto p-5 bg-slate-50/20">
+                        <form id="partForm" class="flex items-center space-x-3 whitespace-nowrap min-w-max">
+                            <input type="hidden" id="partRecordId">
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">零件編號*</label>
+                                <input type="text" id="partNo" required placeholder="如: P-101" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">中文名稱*</label>
+                                <input type="text" id="partNameZh" required placeholder="例如: 液晶面板" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">英文名稱*</label>
+                                <input type="text" id="partNameEn" required placeholder="如: LCD Screen" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">庫存數量*</label>
+                                <input type="number" id="partQty" min="0" value="0" required class="w-20 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-slate-500">存放櫃號*</label>
+                                <input type="text" id="cabinetNo" required placeholder="例如: A-03" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-rose-600">成本 (TWD)*</label>
+                                <input type="number" id="partCost" min="0" required placeholder="0" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-emerald-700">售價 (TWD)*</label>
+                                <input type="number" id="partPrice" min="0" required placeholder="0" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <button type="submit" id="partSubmitBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]">💾 儲存零件</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- 零件搜尋與 Excel 批量匯入大看板 -->
+                <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b pb-4 border-slate-100">
+                        <div class="space-y-1">
+                            <h2 class="text-sm font-bold text-slate-700">🔍 快速關鍵字搜尋零件庫存</h2>
+                            <p class="text-slate-400 text-xs">可直接輸入零件編號、中/英文名稱進行即時隨打即搜</p>
+                        </div>
+                        
+                        <!-- 📥 核心功能：Excel 匯入區塊 -->
+                        <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-200 flex items-center space-x-3 w-full lg:w-auto">
+                            <div class="text-left space-y-0.5">
+                                <span class="text-emerald-800 text-xs font-bold block">📥 批量匯入庫存 Excel</span>
+                                <span class="text-[10px] text-emerald-600 block">欄位順序：編號 | 中文名 | 英文名 | 數量 | 櫃號 | 成本 | 售價</span>
+                            </div>
+                            <label class="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition flex items-center whitespace-nowrap">
+                                📁 選擇 Excel 檔案
+                                <input type="file" id="excelImportFile" accept=".xlsx, .xls" class="hidden" onchange="handleExcelImport(this)">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <input type="text" id="searchPartKeyword" placeholder="請輸入零件編號、中文名稱或英文名稱關鍵字進行模糊搜尋..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:outline-none focus:border-emerald-500">
+                        <button onclick="clearPartSearch()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 border rounded-lg text-xs font-semibold transition">清除搜尋</button>
+                    </div>
+                    
+                    <div id="partSearchResultWrapper" class="pt-2 hidden">
+                        <div class="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-100 px-4 py-2 rounded-lg mb-3">🎯 搜尋到 <span id="partSearchCount" class="font-extrabold text-sm text-teal-600">0</span> 筆零件資料：</div>
+                        <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-inner">
+                            <table class="w-full text-left border-collapse bg-white text-xs"><tbody id="partSearchTableBody" class="divide-y divide-slate-200"></tbody></table>
+                        </div>
+                    </div>
+                    <div id="partSearchNoDataMessage" class="hidden text-center py-4 text-slate-400 text-xs bg-slate-50 rounded-lg border border-dashed">❌ 找不到符合關鍵字的零件紀錄</div>
+                </section>
+
+                <!-- 最新 10 筆零件列表 -->
+                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="px-6 py-3.5 bg-slate-700 text-white flex justify-between items-center">
+                        <h2 class="text-xs font-bold tracking-wide">📦 最新建立零件資料（限展示前 10 筆檔案）</h2>
+                        <span class="text-xs bg-slate-600 text-slate-300 px-2.5 py-1 rounded font-mono">總項目：<span id="partTotalCount" class="text-white font-bold">0</span> 項</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs"><tbody id="partLatestTableBody" class="divide-y divide-slate-200"></tbody></table>
+                    </div>
+                    <div id="partLatestNoDataMessage" class="hidden text-center py-12 text-slate-400 text-xs">📭 目前零件庫中尚無任何資料。</div>
+                </section>
+            </div>
+
+        </main>
+    </div>
+    <!-- ==================== 核心 JavaScript 邏輯控制 ==================== -->
+    <script>
+        // 嚴格安全防護密碼
+        const CORRECT_PASSWORD = '10710056'; 
+        
+        // 核心資料陣列（隨網頁安全登入解鎖後才會同步讀取）
+        let repairRecords = [];
+        let partRecords = [];
+
+        // 頁面初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('systemPassword').focus();
+            
+            // 綁定維修單號電話即時搜尋事件
+            document.getElementById('searchPhone').addEventListener('input', function(e) {
+                doRepairSearch(e.target.value.trim());
+            });
+
+            // 綁定零件欄位即時關鍵字模糊搜尋事件
+            document.getElementById('searchPartKeyword').addEventListener('input', function(e) {
+                doPartSearch(e.target.value.trim());
+            });
+        });
+
+        // 系統密碼驗證解鎖
+        function verifyPassword() {
+            const inputPass = document.getElementById('systemPassword').value;
+            const errorMsg = document.getElementById('loginError');
+            const overlay = document.getElementById('loginOverlay');
+            const mainContent = document.getElementById('mainContent');
+
+            if (inputPass === CORRECT_PASSWORD) {
+                // 驗證成功後才正式將本機快取資料載入至暫存器中
+                repairRecords = JSON.parse(localStorage.getItem('repair_records')) || [];
+                partRecords = JSON.parse(localStorage.getItem('part_records')) || [];
+
+                overlay.classList.add('hidden');
+                mainContent.classList.remove('hidden', 'opacity-0');
+                mainContent.classList.add('opacity-100');
+                
+                resetReceivedDate();
+                refreshRepairUI();
+                refreshPartUI();
+            } else {
+                errorMsg.classList.remove('hidden');
+                document.getElementById('systemPassword').value = '';
+                document.getElementById('systemPassword').focus();
+            }
+        }
+
+        // 支援點選鍵盤 Enter 直接解鎖
+        document.getElementById('systemPassword').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                verifyPassword();
+            }
+        });
+
+        // 安全登出（即時徹底抹除記憶體與畫面的敏感數據）
+        function lockSystem() {
+            repairRecords = [];
+            partRecords = [];
+            
+            document.getElementById('repairLatestTableBody').innerHTML = '';
+            document.getElementById('repairSearchTableBody').innerHTML = '';
+            document.getElementById('partLatestTableBody').innerHTML = '';
+            document.getElementById('partSearchTableBody').innerHTML = '';
+            
+            document.getElementById('repairSearchResultWrapper').classList.add('hidden');
+            document.getElementById('partSearchResultWrapper').classList.add('hidden');
+            document.getElementById('repairForm').reset();
+            document.getElementById('partForm').reset();
+            document.getElementById('searchPhone').value = '';
+            document.getElementById('searchPartKeyword').value = '';
+            document.getElementById('excelImportFile').value = '';
+
+            document.getElementById('systemPassword').value = '';
+            document.getElementById('loginError').classList.add('hidden');
+            
+            const overlay = document.getElementById('loginOverlay');
+            const mainContent = document.getElementById('mainContent');
+            
+            overlay.classList.remove('hidden');
+            mainContent.classList.add('hidden', 'opacity-0');
+        }
+
+        // 分頁分流控制
+        function switchTab(tabName) {
+            const tabRepairBtn = document.getElementById('tabRepairBtn');
+            const tabPartBtn = document.getElementById('tabPartBtn');
+            const sectionRepair = document.getElementById('sectionRepair');
+            const sectionPart = document.getElementById('sectionPart');
+
+            if (tabName === 'repair') {
+                tabRepairBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold transition bg-blue-600 text-white";
+                tabPartBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold transition text-slate-400 hover:text-white";
+                sectionRepair.classList.remove('hidden');
+                sectionPart.classList.add('hidden');
+                refreshRepairUI();
+            } else {
+                tabRepairBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold transition text-slate-400 hover:text-white";
+                tabPartBtn.className = "px-4 py-1.5 rounded-md text-xs font-bold transition bg-emerald-600 text-white";
+                sectionRepair.classList.add('hidden');
+                sectionPart.classList.remove('hidden');
+                refreshPartUI();
+            }
+        }
+
+        // ==================== 🛠️ [模組一] 維修客戶管理核心控制邏輯 ====================
+        function resetReceivedDate() {
+            const dateInput = document.getElementById('receivedDate');
+            if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+        }
+
+        document.getElementById('repairForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const recordId = document.getElementById('repairRecordId').value;
+            const rawCost = document.getElementById('repairCost').value;
+            
+            const formData = {
+                receivedDate: document.getElementById('receivedDate').value,
+                customerName: document.getElementById('customerName').value.trim(),
+                customerPhone: document.getElementById('customerPhone').value.trim(),
+                productModel: document.getElementById('productModel').value.trim(),
+                quantity: document.getElementById('quantity').value,
+                issueReason: document.getElementById('issueReason').value.trim(),
+                replacedParts: document.getElementById('replacedParts').value.trim() || '無',
+                repairCost: rawCost !== '' ? Number(rawCost) : null,
+                pickupDate: document.getElementById('pickupDate').value || '未取件',
+                shippingNo: document.getElementById('shippingNo').value.trim() || '無'
+            };
+
+            if (recordId) {
+                const index = repairRecords.findIndex(r => r.id == recordId);
+                if (index !== -1) {
+                    repairRecords[index] = { ...repairRecords[index], ...formData };
+                    alert('🎉 維修單更新成功！');
+                }
+                cancelRepairEdit();
+            } else {
+                formData.id = Date.now();
+                repairRecords.unshift(formData);
+                alert('💾 新維修單儲存成功！');
+            }
+
+            localStorage.setItem('repair_records', JSON.stringify(repairRecords));
+            this.reset();
+            resetReceivedDate();
+            refreshRepairUI();
+            doRepairSearch(document.getElementById('searchPhone').value.trim());
+        });
+
+        function doRepairSearch(phoneQuery) {
+            const wrapper = document.getElementById('repairSearchResultWrapper');
+            const tbody = document.getElementById('repairSearchTableBody');
+            const noData = document.getElementById('repairSearchNoDataMessage');
+            
+            if (!phoneQuery) {
+                wrapper.classList.add('hidden');
+                noData.classList.add('hidden');
+                return;
+            }
+
+            const filtered = repairRecords.filter(r => r.customerPhone.includes(phoneQuery));
+            document.getElementById('repairSearchCount').textContent = filtered.length;
+            tbody.innerHTML = '';
+            
+            if (filtered.length === 0) {
+                wrapper.classList.add('hidden');
+                noData.classList.remove('hidden');
+                return;
+            }
+            
+            noData.classList.add('hidden');
+            wrapper.classList.remove('hidden');
+            renderRepairRows(filtered, tbody);
+        }
+
+        function refreshRepairUI() {
+            const totalCountEl = document.getElementById('repairTotalCount');
+            if (!totalCountEl) return;
+            totalCountEl.textContent = repairRecords.length;
+
+            const latestTbody = document.getElementById('repairLatestTableBody');
+            const latestNoData = document.getElementById('repairLatestNoDataMessage');
+            latestTbody.innerHTML = '';
+            
+            if (repairRecords.length === 0) {
+                latestNoData.classList.remove('hidden');
+                return;
+            }
+            latestNoData.classList.add('hidden');
+
+            const top10 = repairRecords.slice(0, 10);
+            renderRepairRows(top10, latestTbody);
+        }
+
+        function renderRepairRows(dataList, targetTbody) {
+            dataList.forEach(record => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-100 transition text-slate-700 font-medium";
+                const sep = `<span class="text-slate-900 font-extrabold px-3.5 select-none text-base">｜</span>`;
+
+                let costDisplay = record.repairCost === null 
+                    ? `<span class="text-amber-700 bg-amber-100 px-2 py-0.5 rounded text-xs font-bold border border-amber-200">尚未報價</span>` 
+                    : `<span class="font-mono text-slate-900 font-bold bg-slate-100 px-2 py-0.5 rounded border border-slate-200">$${record.repairCost.toLocaleString()}</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-3 text-center bg-slate-50/50 whitespace-nowrap space-x-1 border-r border-slate-200 w-24">
+                        <button onclick="startRepairEdit(${record.id})" class="text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-300 px-2 py-1 rounded text-xs font-bold">✏️ 修改</button>
+                        <button onclick="deleteRepairRecord(${record.id})" class="text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-300 px-2 py-1 rounded text-xs font-bold">🗑️ 刪除</button>
+                    </td>
+                    <td class="p-3 whitespace-nowrap tracking-wide">
+                        <span class="text-slate-400 text-xs">送修:</span> <span class="font-bold text-slate-900">${record.receivedDate}</span>${sep}
+                        <span class="text-slate-400 text-xs">客戶:</span> <span class="font-bold text-slate-800">${record.customerName}</span>${sep}
+                        <span class="text-slate-400 text-xs">電話:</span> <span class="font-mono font-bold text-blue-700 bg-blue-50 px-1 rounded">${record.customerPhone}</span>${sep}
+                        <span class="text-slate-400 text-xs">型號:</span> <span class="font-bold text-slate-900 text-sm bg-slate-100 px-1.5 rounded border">${record.productModel}</span>${sep}
+                        <span class="text-slate-400 text-xs">數量:</span> <span class="font-bold text-slate-800">${record.quantity} 件</span>${sep}
+                        <span class="text-rose-500 text-xs font-bold">故障原因:</span> <span class="text-rose-600 font-bold">${record.issueReason}</span>${sep}
+                        <span class="text-emerald-600 text-xs font-bold">更換零件:</span> <span class="text-emerald-700 font-bold bg-emerald-50 px-1 rounded">${record.replacedParts}</span>${sep}
+                        <span class="text-slate-400 text-xs">費用:</span> ${costDisplay}${sep}
+                        <span class="text-slate-400 text-xs">取件日:</span> <span class="font-bold text-slate-700">${record.pickupDate}</span>${sep}
+                        <span class="text-slate-400 text-xs">託運單號:</span> <span class="font-mono font-semibold bg-gray-50 text-slate-600 border px-1 rounded">${record.shippingNo}</span>
+                    </td>
+                `;
+                targetTbody.appendChild(tr);
+            });
+        }
+
+        function startRepairEdit(id) {
+            const record = repairRecords.find(r => r.id === id);
+            if (!record) return;
+
+            document.getElementById('repairRecordId').value = record.id;
+            document.getElementById('receivedDate').value = record.receivedDate;
+            document.getElementById('customerName').value = record.customerName;
+            document.getElementById('customerPhone').value = record.customerPhone;
+            document.getElementById('productModel').value = record.productModel;
+            document.getElementById('quantity').value = record.quantity;
+            document.getElementById('issueReason').value = record.issueReason;
+            document.getElementById('replacedParts').value = record.replacedParts === '無' ? '' : record.replacedParts;
+            document.getElementById('repairCost').value = record.repairCost !== null ? record.repairCost : '';
+            document.getElementById('pickupDate').value = record.pickupDate === '未取件' ? '' : record.pickupDate;
+            document.getElementById('shippingNo').value = record.shippingNo === '無' ? '' : record.shippingNo;
+
+            document.getElementById('repairFormTitle').innerHTML = '✏️ <span class="text-amber-700 font-bold">正在修改維修單檔案</span>';
+            document.getElementById('cancelRepairEditBtn').classList.remove('hidden');
+            
+            const btn = document.getElementById('repairSubmitBtn');
+            btn.textContent = '🔄 更新維修單';
+            btn.className = "bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelRepairEdit() {
+            document.getElementById('repairForm').reset();
+            document.getElementById('repairRecordId').value = '';
+            resetReceivedDate();
+            document.getElementById('repairFormTitle').textContent = '📝 建立新維修單';
+            document.getElementById('cancelRepairEditBtn').classList.add('hidden');
+            const btn = document.getElementById('repairSubmitBtn');
+            btn.textContent = '💾 儲存資料';
+            btn.className = "bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
+        }
+
+        function deleteRepairRecord(id) {
+            if (confirm('確定要刪除此筆維修紀錄嗎？')) {
+                if (document.getElementById('repairRecordId').value == id) cancelRepairEdit();
+                repairRecords = repairRecords.filter(r => r.id !== id);
+                localStorage.setItem('repair_records', JSON.stringify(repairRecords));
+                refreshRepairUI();
+                doRepairSearch(document.getElementById('searchPhone').value.trim());
+            }
+        }
+
+        function clearRepairSearch() {
+            document.getElementById('searchPhone').value = '';
+            doRepairSearch('');
+        }
+
+        // ==================== 📦 [模組二] 零件庫存管理與 Excel 匯入引擎 ====================
+        
+        // 核心邏輯功能：Excel 檔案讀取、防呆校正與智能排重引擎
+        function handleExcelImport(inputElement) {
+            const file = inputElement.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            
+            // 檔案載入完畢後開始解析
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // 預設抓取 Excel 的第一個工作表（Sheet）
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // 將 Excel 轉為二維陣列（不預設標頭，由程式手動解析過濾空行）
+                    const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (rawRows.length === 0) {
+                        alert('❌ 匯入失敗：這個 Excel 檔案內沒有發現任何數據！');
+                        inputElement.value = '';
+                        return;
+                    }
+
+                    let importCount = 0;
+                    let skipCount = 0;
+
+                    // 尋找真實資料的起點（若第一行為標頭文字「零件編號、名稱」等則跳過）
+                    const startLine = (isNaN(Number(rawRows[0][3])) && isNaN(Number(rawRows[0][5]))) ? 1 : 0;
+
+                    for (let i = startLine; i < rawRows.length; i++) {
+                        const row = rawRows[i];
+                        
+                        // 檢查至少要有編號與中文名稱，其餘若為空則進行自動補償
+                        if (!row[0] || String(row[0]).trim() === '') continue; 
+
+                        const pNo = String(row[0]).trim();
+                        const pNameZh = row[1] ? String(row[1]).trim() : '未命名零件';
+                        const pNameEn = row[2] ? String(row[2]).trim() : 'N/A';
+                        const pQty = isNaN(Number(row[3])) ? 0 : Math.max(0, Number(row[3]));
+                        const pCabinet = row[4] ? String(row[4]).trim() : '未歸位';
+                        const pCost = isNaN(Number(row[5])) ? 0 : Math.max(0, Number(row[5]));
+                        const pPrice = isNaN(Number(row[6])) ? 0 : Math.max(0, Number(row[6]));
+
+                        // 【智能排重防錯機制】
+                        // 如果在目前資料庫中發現一模一樣的「零件編號」，則採取庫存直接疊加、更新，不產生重複項目
+                        const targetIdx = partRecords.findIndex(p => p.partNo.toLowerCase() === pNo.toLowerCase());
+
+                        if (targetIdx !== -1) {
+                            partRecords[targetIdx].partQty += pQty; // 庫存自動累加
+                            partRecords[targetIdx].partNameZh = pNameZh; // 複寫更新資訊
+                            partRecords[targetIdx].partNameEn = pNameEn;
+                            partRecords[targetIdx].cabinetNo = pCabinet;
+                            partRecords[targetIdx].partCost = pCost;
+                            partRecords[targetIdx].partPrice = pPrice;
+                            skipCount++;
+                        } else {
+                            // 若是全新編號，則建立全新唯一的 ID 寫入陣列最上方
+                            partRecords.unshift({
+                                id: Date.now() + i, // 避免時間戳記完全相同
+                                partNo: pNo,
+                                partNameZh: pNameZh,
+                                partNameEn: pNameEn,
+                                partQty: pQty,
+                                cabinetNo: pCabinet,
+                                partCost: pCost,
+                                partPrice: pPrice
+                            });
+                            importCount++;
+                        }
+                    }
+
+                    // 寫入本機永久快取庫
+                    localStorage.setItem('part_records', JSON.stringify(partRecords));
+                    
+                    // 刷新零件控制介面
+                    refreshPartUI();
+                    alert(`📦 Excel 批量匯入大成功！\n──────────────────\n🔹 成功建立新零件：${importCount} 項\n🔸 偵測編號重複（已自動更新與累加庫存）：${skipCount} 項`);
+                    
+                    // 重設上傳欄位，方便下次重複選取
+                    inputElement.value = '';
+
+                } catch (err) {
+                    console.error(err);
+                    alert('❌ 檔案解析失敗：請確定您選擇的是標準的 Excel 檔案 (.xlsx / .xls)，且內容無嚴重毀損。');
+                    inputElement.value = '';
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 手動單筆表單新增/修改零件邏輯
+        document.getElementById('partForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const recordId = document.getElementById('partRecordId').value;
+            
+            const formData = {
+                partNo: document.getElementById('partNo').value.trim(),
+                partNameZh: document.getElementById('partNameZh').value.trim(),
+                partNameEn: document.getElementById('partNameEn').value.trim(),
+                partQty: Number(document.getElementById('partQty').value),
+                cabinetNo: document.getElementById('cabinetNo').value.trim(),
+                partCost: Number(document.getElementById('partCost').value),
+                partPrice: Number(document.getElementById('partPrice').value)
+            };
+
+            if (recordId) {
+                const index = partRecords.findIndex(p => p.id == recordId);
+                if (index !== -1) {
+                    partRecords[index] = { ...partRecords[index], ...formData };
+                    alert('🎉 零件資料更新成功！');
+                }
+                cancelPartEdit();
+            } else {
+                // 新建時一樣檢查編號重複
+                const isDup = partRecords.some(p => p.partNo.toLowerCase() === formData.partNo.toLowerCase());
+                if (isDup) {
+                    alert('⚠️ 儲存失敗：此零件編號已存在庫存中！\n如需增加庫存，請直接點選下方列表的「✏️ 修改」按鈕，或透過 Excel 匯入功能自動加總。');
+                    return;
+                }
+                formData.id = Date.now();
+                partRecords.unshift(formData);
+                alert('💾 新零件品項已儲存入庫！');
+            }
+
+            localStorage.setItem('part_records', JSON.stringify(partRecords));
+            this.reset();
+            refreshPartUI();
+            doPartSearch(document.getElementById('searchPartKeyword').value.trim());
+        });
+
+        function doPartSearch(keywordQuery) {
+            const wrapper = document.getElementById('partSearchResultWrapper');
+            const tbody = document.getElementById('partSearchTableBody');
+            const noData = document.getElementById('partSearchNoDataMessage');
+            
+            if (!keywordQuery) {
+                wrapper.classList.add('hidden');
+                noData.classList.add('hidden');
+                return;
+            }
+
+            const q = keywordQuery.toLowerCase();
+            const filtered = partRecords.filter(p => 
+                p.partNo.toLowerCase().includes(q) || 
+                p.partNameZh.toLowerCase().includes(q) || 
+                p.partNameEn.toLowerCase().includes(q)
+            );
+
+            document.getElementById('partSearchCount').textContent = filtered.length;
+            tbody.innerHTML = '';
+            
+            if (filtered.length === 0) {
+                wrapper.classList.add('hidden');
+                noData.classList.remove('hidden');
+                return;
+            }
+            
+            noData.classList.add('hidden');
+            wrapper.classList.remove('hidden');
+            renderPartRows(filtered, tbody);
+        }
+
+        function refreshPartUI() {
+            const totalCountEl = document.getElementById('partTotalCount');
+            if (!totalCountEl) return;
+            totalCountEl.textContent = partRecords.length;
+
+            const latestTbody = document.getElementById('partLatestTableBody');
+            const latestNoData = document.getElementById('partLatestNoDataMessage');
+            latestTbody.innerHTML = '';
+            
+            if (partRecords.length === 0) {
+                latestNoData.classList.remove('hidden');
+                return;
+            }
+            latestNoData.classList.add('hidden');
+
+            const top10 = partRecords.slice(0, 10);
+            renderPartRows(top10, latestTbody);
+        }
+
+        function renderPartRows(dataList, targetTbody) {
+            dataList.forEach(record => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-100 transition text-slate-700 font-medium";
+                const sep = `<span class="text-slate-900 font-extrabold px-3.5 select-none text-base">｜</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-3 text-center bg-slate-50/50 whitespace-nowrap space-x-1 border-r border-slate-200 w-24">
+                        <button onclick="startPartEdit(${record.id})" class="text-emerald-600 hover:text-white hover:bg-emerald-600 border border-emerald-300 px-2 py-1 rounded text-xs font-bold">✏️ 修改</button>
+                        <button onclick="deletePartRecord(${record.id})" class="text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-300 px-2 py-1 rounded text-xs font-bold">🗑️ 刪除</button>
+                    </td>
+                    <td class="p-3 whitespace-nowrap tracking-wide">
+                        <span class="text-slate-400 text-xs">零件編號:</span> <span class="font-mono font-bold text-slate-900 bg-slate-100 border px-1.5 rounded">${record.partNo}</span>${sep}
+                        <span class="text-slate-400 text-xs">中文名稱:</span> <span class="font-bold text-slate-800 text-sm">${record.partNameZh}</span>${sep}
+                        <span class="text-slate-400 text-xs">英文名稱:</span> <span class="font-mono font-semibold text-slate-500">${record.partNameEn}</span>${sep}
+                        <span class="text-slate-400 text-xs">現有庫存:</span> <span class="font-bold ${record.partQty <= 3 ? 'text-rose-600 bg-rose-50 px-1 rounded' : 'text-slate-800'}">${record.partQty} 件</span>${sep}
+                        <span class="text-slate-400 text-xs">存放櫃號:</span> <span class="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">${record.cabinetNo}</span>${sep}
+                        <span class="text-rose-500 text-xs font-bold">成本價:</span> <span class="font-mono font-bold text-rose-600">$${record.partCost.toLocaleString()}</span>${sep}
+                        <span class="text-emerald-600 text-xs font-bold">對外售價:</span> <span class="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 rounded border border-emerald-200">$${record.partPrice.toLocaleString()}</span>
+                    </td>
+                `;
+                targetTbody.appendChild(tr);
+            });
+        }
+
+        function startPartEdit(id) {
+            const record = partRecords.find(p => p.id === id);
+            if (!record) return;
+
+            document.getElementById('partRecordId').value = record.id;
+            document.getElementById('partNo').value = record.partNo;
+            document.getElementById('partNameZh').value = record.partNameZh;
+            document.getElementById('partNameEn').value = record.partNameEn;
+            document.getElementById('partQty').value = record.partQty;
+            document.getElementById('cabinetNo').value = record.cabinetNo;
+            document.getElementById('partCost').value = record.partCost;
+            document.getElementById('partPrice').value = record.partPrice;
+
+            document.getElementById('partFormTitle').innerHTML = '✏️ <span class="text-amber-700 font-bold">正在修改庫存零件資料</span>';
+            document.getElementById('cancelPartEditBtn').classList.remove('hidden');
+            
+            const btn = document.getElementById('partSubmitBtn');
+            btn.textContent = '🔄 更新零件';
+            btn.className = "bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelPartEdit() {
+            document.getElementById('partForm').reset();
+            document.getElementById('partRecordId').value = '';
+            document.getElementById('partFormTitle').textContent = '⚙️ 新增庫存零件資料';
+            document.getElementById('cancelPartEditBtn').classList.add('hidden');
+            const btn = document.getElementById('partSubmitBtn');
+            btn.textContent = '💾 儲存零件';
+            btn.className = "bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
+        }
+
+        function deletePartRecord(id) {
+            if (confirm('確定要刪除此筆零件品項嗎？')) {
+                if (document.getElementById('partRecordId').value == id) cancelPartEdit();
+                partRecords = partRecords.filter(p => p.id !== id);
+                localStorage.setItem('part_records', JSON.stringify(partRecords));
+                refreshPartUI();
+                doPartSearch(document.getElementById('searchPartKeyword').value.trim());
+            }
+        }
+
+        function clearPartSearch() {
+            document.getElementById('searchPartKeyword').value = '';
+            doPartSearch('');
+        }
+    </script>
+</body>
+</html>
