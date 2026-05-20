@@ -22,15 +22,16 @@
             top: 0;
             z-index: 10;
         }
-        .excel-table tbody tr:nth-child(even) {
-            background-color: #f8fafc;
-        }
-        .excel-table tbody tr:hover {
-            background-color: #f1f5f9;
-        }
+        /* 維修區表格交織色 */
+        .repair-rows tr:nth-child(even) { background-color: #f0f4f8; }
+        .repair-rows tr:hover { background-color: #e2e8f0; }
+        
+        /* 零件區表格交織色 */
+        .part-rows tr:nth-child(even) { background-color: #f0fdf4; }
+        .part-rows tr:hover { background-color: #dcfce7; }
     </style>
 </head>
-<body class="bg-slate-50 font-sans antialiased pb-24 text-slate-800">
+<body class="bg-slate-100 font-sans antialiased pb-24 text-slate-800">
 
     <!-- ==================== 密碼驗證遮罩層 ==================== -->
     <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-4">
@@ -77,12 +78,12 @@
         <!-- 主區塊 -->
         <main class="max-w-[95%] mx-auto px-6 mt-8 space-y-8">
             
-            <!-- ==================== [分頁一] 維修客戶管理介面 ==================== -->
-            <div id="sectionRepair" class="space-y-8">
-                <!-- 維修單輸入（單行橫向，產品型號可動態增加） -->
+            <!-- ==================== [分頁一] 維修客戶管理介面 (藍色背景區) ==================== -->
+            <div id="sectionRepair" class="space-y-8 bg-blue-50/50 p-6 rounded-2xl border border-blue-200/60 shadow-inner">
+                <!-- 維修單輸入（單行橫向） -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                        <h2 id="repairFormTitle" class="text-sm font-bold text-slate-700">📝 建立新維修單</h2>
+                    <div class="px-6 py-3 bg-blue-600/10 border-b border-blue-200 flex justify-between items-center">
+                        <h2 id="repairFormTitle" class="text-sm font-bold text-blue-950">📝 建立新維修單</h2>
                         <button id="cancelRepairEditBtn" onclick="cancelRepairEdit()" class="hidden text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded-md shadow-sm font-semibold transition">取消修改</button>
                     </div>
                     <div class="overflow-x-auto p-5 bg-slate-50/20">
@@ -105,15 +106,14 @@
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             
-                            <!-- 🌟 動態產品型號與數量容器區塊 -->
-                            <div id="productFieldsContainer" class="flex items-center space-x-2 bg-blue-50/40 p-1.5 rounded-xl border border-blue-100">
+                            <!-- 動態產品型號與數量容器 -->
+                            <div id="productFieldsContainer" class="flex items-center space-x-2 bg-blue-100/60 p-1.5 rounded-xl border border-blue-200">
                                 <div class="product-group flex items-center space-x-2">
                                     <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                                     <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                                 </div>
                             </div>
-                            <!-- ➕ 增加型號按鈕 -->
-                            <button type="button" onclick="addProductField()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2 px-2.5 rounded-lg transition shadow-sm h-[36px] flex items-center justify-center">➕ 增加型號</button>
+                            <button type="button" onclick="addProductField()" class="bg-blue-100 text-blue-800 hover:bg-blue-200 text-xs font-bold py-2 px-2.5 rounded-lg transition shadow-sm h-[36px]">➕ 增加型號</button>
                             
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
@@ -135,6 +135,14 @@
                                 <label class="text-xs font-bold text-slate-500">取件日期</label>
                                 <input type="date" id="pickupDate" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             </div>
+                            
+                            <!-- 🌟 核心新增：客戶取走日期欄位 -->
+                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
+                            <div class="flex items-center space-x-2">
+                                <label class="text-xs font-bold text-blue-700">客戶取走日期</label>
+                                <input type="date" id="customerPickupDate" class="w-36 px-2 py-1.5 border border-blue-300 bg-blue-50/30 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                            
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-slate-500">託運單號</label>
@@ -146,7 +154,7 @@
                     </div>
                 </section>
 
-                <!-- 維修電話搜尋大看板 -->
+                <!-- 維修電話搜尋看板 -->
                 <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-3">
                     <div class="text-xs font-bold text-slate-400 select-none tracking-wider">〔以電話號碼搜尋〕</div>
                     <div class="flex gap-3">
@@ -169,10 +177,11 @@
                                         <th>更換零件</th>
                                         <th>維修費用</th>
                                         <th>取件日期</th>
+                                        <th>客戶取走日期</th>
                                         <th>託運單號</th>
                                     </tr>
                                 </thead>
-                                <tbody id="repairSearchTableBody"></tbody>
+                                <tbody id="repairSearchTableBody" class="repair-rows"></tbody>
                             </table>
                         </div>
                     </div>
@@ -198,22 +207,23 @@
                                     <th>更換零件</th>
                                     <th>維修費用</th>
                                     <th>取件日期</th>
+                                    <th>客戶取走日期</th>
                                     <th>託運單號</th>
                                 </tr>
                             </thead>
-                            <tbody id="repairLatestTableBody"></tbody>
+                            <tbody id="repairLatestTableBody" class="repair-rows"></tbody>
                         </table>
                     </div>
                     <div id="repairLatestNoDataMessage" class="hidden text-center py-12 text-slate-400 text-xs">📭 目前無維修資料。</div>
                 </section>
             </div>
 
-            <!-- ==================== [分頁二] 零件庫存管理介面 ==================== -->
-            <div id="sectionPart" class="space-y-8 hidden">
+            <!-- ==================== [分頁二] 零件庫存管理介面 (綠色背景區) ==================== -->
+            <div id="sectionPart" class="space-y-8 hidden bg-emerald-50/50 p-6 rounded-2xl border border-emerald-200/60 shadow-inner">
                 <!-- 零件輸入（單行橫向） -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                        <h2 id="partFormTitle" class="text-sm font-bold text-slate-700">⚙️ 新增零件資料</h2>
+                    <div class="px-6 py-3 bg-emerald-600/10 border-b border-emerald-200 flex justify-between items-center">
+                        <h2 id="partFormTitle" class="text-sm font-bold text-emerald-950">⚙️ 新增零件資料</h2>
                         <button id="cancelPartEditBtn" onclick="cancelPartEdit()" class="hidden text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded-md shadow-sm font-semibold transition">取消修改</button>
                     </div>
                     <div class="overflow-x-auto p-5 bg-slate-50/20">
@@ -221,37 +231,37 @@
                             <input type="hidden" id="partRecordId">
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-slate-500">零件編號</label>
-                                <input type="text" id="partNo" required placeholder="編號" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none">
+                                <input type="text" id="partNo" required placeholder="編號" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-slate-500">中文名稱</label>
-                                <input type="text" id="partNameZh" required placeholder="中文名" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
+                                <input type="text" id="partNameZh" required placeholder="中文名" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-slate-500">英文名稱</label>
-                                <input type="text" id="partNameEn" required placeholder="英文名" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none">
+                                <input type="text" id="partNameEn" required placeholder="英文名" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-slate-500">庫存數量</label>
-                                <input type="number" id="partQty" min="0" value="0" required class="w-20 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
+                                <input type="number" id="partQty" min="0" value="0" required class="w-20 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-slate-500">存放櫃號</label>
-                                <input type="text" id="cabinetNo" required placeholder="櫃號" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none">
+                                <input type="text" id="cabinetNo" required placeholder="櫃號" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-rose-600">成本</label>
-                                <input type="number" id="partCost" min="0" required placeholder="成本" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
+                                <input type="number" id="partCost" min="0" required placeholder="成本" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-emerald-700">售價</label>
-                                <input type="number" id="partPrice" min="0" required placeholder="售價" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
+                                <input type="number" id="partPrice" min="0" required placeholder="售價" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <button type="submit" id="partSubmitBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]">💾 儲存</button>
@@ -264,8 +274,8 @@
                     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b pb-3 border-slate-100">
                         <h2 class="text-sm font-bold text-slate-700">🔍 搜尋零件庫存</h2>
                         
-                        <div class="bg-emerald-50/50 p-2 rounded-xl border border-emerald-200 flex items-center space-x-3">
-                            <span class="text-emerald-800 text-xs font-bold">📥 匯入零件 Excel</span>
+                        <div class="bg-emerald-100 text-emerald-950 p-2 rounded-xl border border-emerald-200 flex items-center space-x-3">
+                            <span class="text-emerald-900 text-xs font-bold">📥 匯入零件 Excel</span>
                             <label class="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
                                 選擇檔案
                                 <input type="file" id="excelImportFile" accept=".xlsx, .xls" class="hidden" onchange="handleExcelImport(this)">
@@ -294,7 +304,7 @@
                                         <th>對外售價</th>
                                     </tr>
                                 </thead>
-                                <tbody id="partSearchTableBody"></tbody>
+                                <tbody id="partSearchTableBody" class="part-rows"></tbody>
                             </table>
                         </div>
                     </div>
@@ -321,15 +331,12 @@
                                     <th>對外售價</th>
                                 </tr>
                             </thead>
-                            <tbody id="partLatestTableBody"></tbody>
+                            <tbody id="partLatestTableBody" class="part-rows"></tbody>
                         </table>
                     </div>
                     <div id="partLatestNoDataMessage" class="hidden text-center py-12 text-slate-400 text-xs">📭 目前尚無資料。</div>
                 </section>
             </div>
-
-        </main>
-    </div>
     <!-- ==================== 核心 JavaScript 邏輯控制 ==================== -->
     <script>
         const CORRECT_PASSWORD = '10710056'; 
@@ -424,21 +431,19 @@
             }
         }
 
-        // ==================== 💼 [模組一] 維修客戶管理邏輯 ====================
+        // ==================== 💼 [模組一] 維修客戶管理核心控制邏輯 ====================
         
-        // 🌟 核心修正：動態增加產品型號與數量輸入框（上限 10 個）
         function addProductField() {
             const container = document.getElementById('productFieldsContainer');
             const currentFields = container.getElementsByClassName('product-group');
             
             if (currentFields.length >= 10) {
-                alert('⚠️ 已達上限：單筆維修單最多只能同時新增 10 個商品型號。');
+                alert('已達上限 10 個商品型號');
                 return;
             }
 
-            // 建立一組全新橫向延伸的輸入元件
             const newGroup = document.createElement('div');
-            newGroup.className = "product-group flex items-center space-x-2 border-l border-slate-300 pl-2 ml-1";
+            newGroup.className = "product-group flex items-center space-x-2 border-l border-blue-200 pl-2 ml-1";
             newGroup.innerHTML = `
                 <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                 <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
@@ -447,16 +452,12 @@
             container.appendChild(newGroup);
         }
 
-        // 移除特定的產品型號輸入框
         function removeProductField(button) {
-            const group = button.parentElement;
-            group.remove();
+            button.parentElement.remove();
         }
 
-        // 重置所有型號輸入框，還原為最初的 1 組
         function resetProductFields() {
-            const container = document.getElementById('productFieldsContainer');
-            container.innerHTML = `
+            document.getElementById('productFieldsContainer').innerHTML = `
                 <div class="product-group flex items-center space-x-2">
                     <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                     <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
@@ -475,7 +476,6 @@
             const recordId = document.getElementById('repairRecordId').value;
             const rawCost = document.getElementById('repairCost').value;
             
-            // 🌟 提取多組商品型號與數量，並整齊合併為單一欄位字串
             const modelInputs = document.getElementsByClassName('product-model-input');
             const qtyInputs = document.getElementsByClassName('product-qty-input');
             let productList = [];
@@ -483,9 +483,7 @@
             for (let i = 0; i < modelInputs.length; i++) {
                 const mVal = modelInputs[i].value.trim();
                 const qVal = qtyInputs[i].value;
-                if (mVal) {
-                    productList.push(`${mVal} (${qVal}件)`);
-                }
+                if (mVal) productList.push(`${mVal} (${qVal}件)`);
             }
             const combinedProducts = productList.join(', ');
 
@@ -493,12 +491,14 @@
                 receivedDate: document.getElementById('receivedDate').value,
                 customerName: document.getElementById('customerName').value.trim(),
                 customerPhone: document.getElementById('customerPhone').value.trim(),
-                productModel: combinedProducts, // 合併後的型號與件數欄位
-                quantity: modelInputs.length,  // 記錄共有幾項品項
+                productModel: combinedProducts,
+                quantity: modelInputs.length,  
                 issueReason: document.getElementById('issueReason').value.trim(),
                 replacedParts: document.getElementById('replacedParts').value.trim() || '無',
                 repairCost: rawCost !== '' ? Number(rawCost) : null,
                 pickupDate: document.getElementById('pickupDate').value || '未取件',
+                // 儲存客戶取走日期，留空則自動顯示「未取走」
+                customerPickupDate: document.getElementById('customerPickupDate').value || '未取走',
                 shippingNo: document.getElementById('shippingNo').value.trim() || '無'
             };
 
@@ -572,10 +572,17 @@
             targetTbody.innerHTML = '';
             dataList.forEach(record => {
                 const tr = document.createElement('tr');
+                tr.className = "transition text-slate-700 font-medium";
                 
                 let costDisplay = record.repairCost === null 
-                    ? `<span class="text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[11px] font-bold border border-amber-200">尚未報價</span>` 
+                    ? `<span class="text-amber-700 bg-amber-100 px-2 py-0.5 rounded text-[11px] font-bold border border-amber-200">尚未報價</span>` 
                     : `<span class="font-mono text-slate-900 font-bold">$${record.repairCost.toLocaleString()}</span>`;
+
+                // 處理客戶取走日期的色彩醒目度
+                let cPickup = record.customerPickupDate || '未取走';
+                let cPickupDisplay = cPickup === '未取走' 
+                    ? `<span class="text-rose-600 font-semibold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">${cPickup}</span>` 
+                    : `<span class="font-bold text-slate-900 font-mono">${cPickup}</span>`;
 
                 tr.innerHTML = `
                     <td class="text-center bg-slate-50/50 sticky left-0 z-10 border-r border-slate-300">
@@ -585,12 +592,13 @@
                     <td class="font-bold text-slate-900 font-mono">${record.receivedDate}</td>
                     <td class="font-extrabold text-slate-800">${record.customerName}</td>
                     <td class="font-mono font-bold text-blue-700 bg-blue-50/50">${record.customerPhone}</td>
-                    <td><span class="bg-blue-50 border border-blue-200 text-blue-800 px-2 py-0.5 rounded font-bold text-xs">${record.productModel}</span></td>
+                    <td><span class="bg-blue-50 border border-blue-200 text-blue-800 px-2 py-0.5 rounded font-bold text-xs whitespace-normal block max-w-xs">${record.productModel}</span></td>
                     <td class="text-center font-bold">${record.quantity} 項品類</td>
                     <td class="text-rose-600 font-bold whitespace-normal max-w-xs">${record.issueReason}</td>
                     <td class="text-emerald-700 font-bold bg-emerald-50/30">${record.replacedParts}</td>
                     <td class="text-right pr-4">${costDisplay}</td>
                     <td class="font-semibold text-slate-600 font-mono">${record.pickupDate}</td>
+                    <td class="text-center">${cPickupDisplay}</td>
                     <td class="font-mono text-slate-500 font-semibold">${record.shippingNo}</td>
                 `;
                 targetTbody.appendChild(tr);
@@ -606,30 +614,28 @@
             document.getElementById('customerName').value = record.customerName;
             document.getElementById('customerPhone').value = record.customerPhone;
             
-            // 編輯舊資料時，先將合併字串還原填入第一格型號
             resetProductFields();
             const container = document.getElementById('productFieldsContainer');
-            const rawModelStr = record.productModel; // 格式如: "A (1件), B (2件)"
+            const parts = record.productModel.split(', ');
             
-            const parts = rawModelStr.split(', ');
             if (parts.length > 0) {
-                const firstPart = parts[0].match(/(.*)\s\((\d+)件\)/);
-                if (firstPart) {
-                    container.getElementsByClassName('product-model-input')[0].value = firstPart[1];
-                    container.getElementsByClassName('product-qty-input')[0].value = firstPart[2];
+                // 正則表達式解析還原 "型號 (數量件)"
+                const firstMatch = parts[0].match(/(.*)\s\((\d+)件\)/);
+                if (firstMatch) {
+                    container.getElementsByClassName('product-model-input')[0].value = firstMatch[1];
+                    container.getElementsByClassName('product-qty-input')[0].value = firstMatch[2];
                 } else {
-                    container.getElementsByClassName('product-model-input')[0].value = rawModelStr;
+                    container.getElementsByClassName('product-model-input')[0].value = parts[0];
                 }
 
-                // 若原本包含多個型號，動態還原多個格子
                 for (let i = 1; i < parts.length; i++) {
-                    const extraPart = parts[i].match(/(.*)\s\((\d+)件\)/);
-                    if (extraPart) {
+                    const extraMatch = parts[i].match(/(.*)\s\((\d+)件\)/);
+                    if (extraMatch) {
                         const newGroup = document.createElement('div');
-                        newGroup.className = "product-group flex items-center space-x-2 border-l border-slate-300 pl-2 ml-1";
+                        newGroup.className = "product-group flex items-center space-x-2 border-l border-blue-200 pl-2 ml-1";
                         newGroup.innerHTML = `
-                            <input type="text" value="${extraPart[1]}" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            <input type="number" min="1" value="${extraPart[2]}" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            <input type="text" value="${extraMatch[1]}" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
+                            <input type="number" min="1" value="${extraMatch[2]}" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
                             <button type="button" onclick="removeProductField(this)" class="text-rose-500 hover:text-rose-700 font-bold text-sm px-1">✕</button>
                         `;
                         container.appendChild(newGroup);
@@ -641,9 +647,11 @@
             document.getElementById('replacedParts').value = record.replacedParts === '無' ? '' : record.replacedParts;
             document.getElementById('repairCost').value = record.repairCost !== null ? record.repairCost : '';
             document.getElementById('pickupDate').value = record.pickupDate === '未取件' ? '' : record.pickupDate;
+            // 倒填客戶取走日期
+            document.getElementById('customerPickupDate').value = (record.customerPickupDate === '未取件' || record.customerPickupDate === '未取走') ? '' : record.customerPickupDate;
             document.getElementById('shippingNo').value = record.shippingNo === '無' ? '' : record.shippingNo;
 
-            document.getElementById('repairFormTitle').innerHTML = '✏️ <span class="text-amber-700 font-bold">正在修改</span>';
+            document.getElementById('repairFormTitle').innerHTML = '✏️ <span class="text-amber-700 font-bold">正在修改維修單</span>';
             document.getElementById('cancelRepairEditBtn').classList.remove('hidden');
             
             const btn = document.getElementById('repairSubmitBtn');
@@ -684,12 +692,12 @@
                 alert('無紀錄可供匯出');
                 return;
             }
-            const excelHeader = [["送修日期", "客戶姓名", "電話號碼", "產品型號 (數量)", "總項數", "故障原因", "更換零件", "維修費用", "取件日期", "託運單號"]];
+            const excelHeader = [["送修日期", "客戶姓名", "電話號碼", "產品型號 (數量)", "總項數", "故障原因", "更換零件", "維修費用", "取件日期", "客戶取走日期", "託運單號"]];
             const excelRows = repairRecords.map(r => [
                 r.receivedDate, r.customerName, r.customerPhone, r.productModel,
                 Number(r.quantity), r.issueReason, r.replacedParts,
                 r.repairCost !== null ? Number(r.repairCost) : "尚未報價",
-                r.pickupDate, r.shippingNo
+                r.pickupDate, r.customerPickupDate || "未取走", r.shippingNo
             ]);
             const finalData = excelHeader.concat(excelRows);
             const worksheet = XLSX.utils.aoa_to_sheet(finalData);
@@ -699,7 +707,7 @@
             XLSX.writeFile(workbook, `維修客戶單_${dateStr}.xlsx`);
         }
 
-        // ==================== 📦 [模組二] 零件庫存管理邏輯 ====================
+        // ==================== 📦 [模組二] 零件庫存管理核心控制邏輯 ====================
         function handleExcelImport(inputElement) {
             const files = inputElement.files;
             if (!files || files.length === 0) return;
@@ -908,10 +916,6 @@
             btn.className = "bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
         }
 
-        document.getElementById('searchPartKeyword').addEventListener('input', function(e) {
-            doPartSearch(e.target.value.trim());
-        });
-
         function deletePartRecord(id) {
             if (confirm('確定刪除？')) {
                 if (document.getElementById('partRecordId').value == id) cancelPartEdit();
@@ -929,3 +933,6 @@
     </script>
 </body>
 </html>
+
+        </main>
+    </div>
