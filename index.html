@@ -3,9 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理系統</title>
+    <title>雲端即時同步管理系統</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://tailwindcss.com"></script>
+    
+    <!-- 🌟 核心升級：引入 Google Firebase 官方雲端資料庫核心套件 -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
+
     <style>
         .excel-table th, .excel-table td {
             border: 1px solid #cbd5e1;
@@ -20,11 +25,9 @@
             top: 0;
             z-index: 10;
         }
-        /* 維修區表格交織色 */
         .repair-rows tr:nth-child(even) { background-color: #f8fafc; }
         .repair-rows tr:hover { background-color: #f1f5f9; }
         
-        /* 零件區表格交織色 */
         .part-rows tr:nth-child(even) { background-color: #f0fdf4; }
         .part-rows tr:hover { background-color: #dcfce7; }
     </style>
@@ -35,12 +38,12 @@
     <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-4">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-6 border border-slate-100">
             <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-2xl mx-auto shadow-sm">🔒</div>
-            <h2 class="text-xl font-bold text-slate-800">安全防護鎖</h2>
+            <h2 class="text-xl font-bold text-slate-800">雲端安全防護鎖</h2>
             <div class="space-y-3">
                 <input type="password" id="systemPassword" placeholder="請輸入密碼" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-center text-lg font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none tracking-widest">
             </div>
             <button onclick="verifyPassword()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition shadow-sm tracking-wide">
-                解鎖系統
+                連線並解鎖系統
             </button>
         </div>
     </div>
@@ -51,16 +54,15 @@
         <!-- 頂部導覽列 -->
         <header class="bg-slate-900 text-white shadow-sm sticky top-0 z-50">
             <div class="max-w-[95%] mx-auto px-6 py-4 flex justify-between items-center flex-wrap gap-4">
-                <h1 class="text-xl font-bold tracking-wider">🔧 維修與零件綜合管理面板</h1>
+                <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">☁️ <span>維修與零件雲端綜合面板</span></h1>
                 
                 <div class="flex items-center flex-wrap gap-3">
                     <div class="flex space-x-2">
-                        <!-- 🌟 功能修改：改為安全的原生 CSV 表格導出按鈕 -->
                         <button onclick="exportRepairToCSV()" class="bg-blue-700 hover:bg-blue-800 text-white border border-blue-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
-                            📊 匯出全部維修單 (Excel 開啟)
+                            📊 匯出全部維修單
                         </button>
                         <button onclick="exportPartToCSV()" class="bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
-                            📊 匯出全部零件庫 (Excel 開啟)
+                            📊 匯出全部零件庫
                         </button>
                     </div>
                     <button onclick="lockSystem()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md font-medium border border-slate-700 transition">🔒 登出</button>
@@ -74,7 +76,7 @@
             <!-- ==================== 【綜合管理：上半部 - 💼 維修客戶管理區】 ==================== -->
             <div class="space-y-6">
                 <div class="border-l-4 border-blue-600 pl-3">
-                    <h2 class="text-lg font-black text-slate-800 tracking-wide">💼 維修客戶管理系統區</h2>
+                    <h2 class="text-lg font-black text-slate-800 tracking-wide">💼 維修客戶管理系統區 (雲端即時同步)</h2>
                 </div>
 
                 <!-- 維修單輸入（單行橫向） -->
@@ -189,7 +191,7 @@
                 <!-- 最新 10 筆維修單列表 -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="px-6 py-3 bg-slate-800 text-white flex justify-between items-center">
-                        <h2 class="text-xs font-bold tracking-wide">📋 最新 10 筆維修資料</h2>
+                        <h2 class="text-xs font-bold tracking-wide">📋 最新 10 筆維修資料 (雲端即時連線)</h2>
                         <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded font-mono">總計：<span id="repairTotalCount" class="text-white font-bold">0</span> 筆</span>
                     </div>
                     <div class="overflow-x-auto max-h-[500px]">
@@ -223,7 +225,7 @@
             <!-- ==================== 【綜合管理：下半部 - ⚙️ 零件庫存管理區】 ==================== -->
             <div class="space-y-6">
                 <div class="border-l-4 border-emerald-600 pl-3">
-                    <h2 class="text-lg font-black text-slate-800 tracking-wide">⚙️ 零件庫存管理系統區</h2>
+                    <h2 class="text-lg font-black text-slate-800 tracking-wide">⚙️ 零件庫存管理系統區 (雲端即時同步)</h2>
                 </div>
 
                 <!-- 零件輸入（單行橫向） -->
@@ -312,7 +314,7 @@
                 <!-- 最新 10 筆零件列表 -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="px-6 py-3 bg-slate-700 text-white flex justify-between items-center">
-                        <h2 class="text-xs font-bold tracking-wide">📋 最新 10 筆零件資料</h2>
+                        <h2 class="text-xs font-bold tracking-wide">📋 最新 10 筆零件資料 (雲端即時連線)</h2>
                         <span class="text-xs bg-slate-600 text-slate-300 px-2.5 py-1 rounded font-mono">總計：<span id="partTotalCount" class="text-white font-bold">0</span> 項</span>
                     </div>
                     <div class="overflow-x-auto max-h-[500px]">
@@ -338,15 +340,32 @@
 
         </main>
     </div>
-    <!-- ==================== 核心 JavaScript 邏輯控制 (原生 CSV 下載版) ==================== -->
+    <!-- ==================== 核心 JavaScript 雲端同步與下載控制 ==================== -->
     <script>
+        // 🌟 核心金鑰設定：請將下方內容替換為您在 Google Firebase 申請到的 6 行專屬連線資訊
+        const firebaseConfig = {
+            apiKey: "AIzaSyBe5SYF7iyhs6Tq70OpRKGS63jWkyeWvxw",
+            authDomain: "total-repair-system.firebaseapp.com",
+            databaseURL:  https://total-repair-system-default-rtdb.firebaseio.com/, // 這一行一定要正確，通常是 https://...
+            projectId:  "total-repair-system",
+            storageBucket: "total-repair-system.firebasestorage.app",
+            messagingSenderId:  "1078906329630",
+            appId:"1:1078906329630:web:b81887dd7390c7cd53ac0f",
+        };
+
+        // 嚴格安全管理密碼
         const CORRECT_PASSWORD = '10710056'; 
+        
+        // 全域暫存變數
         let repairRecords = [];
         let partRecords = [];
+        let dbRepairRef, dbPartRef;
+        let isFirebaseInitialized = false;
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('systemPassword').focus();
             
+            // 綁定搜尋輸入監聽
             document.getElementById('searchPhone').addEventListener('input', function(e) {
                 doRepairSearch(e.target.value.trim());
             });
@@ -356,33 +375,68 @@
             });
         });
 
+        // 初始化 Firebase 雲端資料庫並開啟「即時雙向監聽」
+        function initFirebaseAndSync() {
+            if (isFirebaseInitialized) return;
+
+            // 初始化 Google SDK
+            firebase.initializeApp(firebaseConfig);
+            const database = firebase.database();
+            
+            // 建立雲端資料夾節點路徑
+            dbRepairRef = database.ref('repair_records');
+            dbPartRef = database.ref('part_records');
+            
+            // 🌟 核心雲端引擎：監聽維修單資料庫（只要世界任何地方有變動，這段會即時觸發更新畫面）
+            dbRepairRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                repairRecords = [];
+                if (data) {
+                    // 將雲端物件轉為時間逆序陣列
+                    Object.keys(data).forEach(key => {
+                        repairRecords.push({ firebaseKey: key, ...data[key] });
+                    });
+                    repairRecords.sort((a, b) => b.id - a.id);
+                }
+                refreshRepairUI();
+                doRepairSearch(document.getElementById('searchPhone').value.trim());
+            });
+
+            // 🌟 核心雲端引擎：監聽零件庫存資料庫
+            dbPartRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                partRecords = [];
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        partRecords.push({ firebaseKey: key, ...data[key] });
+                    });
+                    partRecords.sort((a, b) => b.id - a.id);
+                }
+                refreshPartUI();
+                doPartSearch(document.getElementById('searchPartKeyword').value.trim());
+            });
+
+            isFirebaseInitialized = true;
+        }
+
         function verifyPassword() {
             const inputPass = document.getElementById('systemPassword').value;
             const overlay = document.getElementById('loginOverlay');
             const mainContent = document.getElementById('mainContent');
 
             if (inputPass === CORRECT_PASSWORD) {
-                repairRecords = JSON.parse(localStorage.getItem('repair_records')) || [];
-                partRecords = JSON.parse(localStorage.getItem('part_records')) || [];
-
                 overlay.classList.add('hidden');
                 mainContent.classList.remove('hidden', 'opacity-0');
                 mainContent.classList.add('opacity-100');
                 
                 resetReceivedDate();
-                refreshRepairUI();
-                refreshPartUI();
+                // 通過密碼後，正式啟動雲端即時載入機制
+                initFirebaseAndSync();
             } else {
                 document.getElementById('systemPassword').value = '';
                 document.getElementById('systemPassword').focus();
             }
         }
-
-        document.getElementById('systemPassword').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                verifyPassword();
-            }
-        });
 
         function lockSystem() {
             repairRecords = [];
@@ -408,42 +462,15 @@
             
             overlay.classList.remove('hidden');
             mainContent.classList.add('hidden', 'opacity-0');
-        }
-
-        // ==================== 💼 [模組一] 維修客戶管理核心控制邏輯 ====================
-        
-        function addProductField() {
-            const container = document.getElementById('productFieldsContainer');
-            const currentFields = container.getElementsByClassName('product-group');
             
-            if (currentFields.length >= 10) {
-                alert('已達上限 10 個商品型號');
-                return;
-            }
-
-            const newGroup = document.createElement('div');
-            newGroup.className = "product-group flex items-center space-x-2 border-l border-slate-300 pl-2 ml-1";
-            newGroup.innerHTML = `
-                <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                <button type="button" onclick="removeProductField(this)" class="text-rose-500 hover:text-rose-700 font-bold text-sm px-1">✕</button>
-            `;
-            container.appendChild(newGroup);
+            // 登出時中斷雲端監聽，保護頻寬與隱私
+            if (dbRepairRef) dbRepairRef.off();
+            if (dbPartRef) dbPartRef.off();
+            isFirebaseInitialized = false;
         }
 
-        function removeProductField(button) {
-            button.parentElement.remove();
-        }
-
-        function resetProductFields() {
-            document.getElementById('productFieldsContainer').innerHTML = `
-                <div class="product-group flex items-center space-x-2">
-                    <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                    <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                </div>
-            `;
-        }
-
+        // ==================== 💼 [模組一] 維修客戶管理雲端資料控制 ====================
+        
         function resetReceivedDate() {
             const dateInput = document.getElementById('receivedDate');
             if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
@@ -481,24 +508,23 @@
             };
 
             if (recordId) {
-                const index = repairRecords.findIndex(r => r.id == recordId);
-                if (index !== -1) {
-                    repairRecords[index] = { ...repairRecords[index], ...formData };
-                    alert('更新成功');
+                // ✏️ 修改模式：直接在雲端目標節點上同步複寫更新
+                const targetRecord = repairRecords.find(r => r.id == recordId);
+                if (targetRecord && targetRecord.firebaseKey) {
+                    formData.id = Number(recordId);
+                    firebase.database().ref('repair_records/' + targetRecord.firebaseKey).set(formData)
+                        .then(() => alert('雲端更新成功'));
                 }
                 cancelRepairEdit();
             } else {
+                // 💾 新增模式：推送到雲端資料庫生成全新唯一序號
                 formData.id = Date.now();
-                repairRecords.unshift(formData);
-                alert('儲存成功');
+                dbRepairRef.push(formData).then(() => alert('雲端儲存成功'));
             }
 
-            localStorage.setItem('repair_records', JSON.stringify(repairRecords));
             this.reset();
             resetProductFields();
             resetReceivedDate();
-            refreshRepairUI();
-            doRepairSearch(document.getElementById('searchPhone').value.trim());
         });
 
         function doRepairSearch(phoneQuery) {
@@ -528,9 +554,7 @@
         }
 
         function refreshRepairUI() {
-            const totalCountEl = document.getElementById('repairTotalCount');
-            if (!totalCountEl) return;
-            totalCountEl.textContent = repairRecords.length;
+            document.getElementById('repairTotalCount').textContent = repairRecords.length;
 
             const latestTbody = document.getElementById('repairLatestTableBody');
             const latestNoData = document.getElementById('repairLatestNoDataMessage');
@@ -546,16 +570,15 @@
             renderRepairRows(top10, latestTbody);
         }
 
-        // 🌟【12欄完美對齊渲染】徹底排除擠壓前端錯落Bug
         function renderRepairRows(dataList, targetTbody) {
             targetTbody.innerHTML = '';
             dataList.forEach(record => {
                 const tr = document.createElement('tr');
                 tr.className = "transition text-slate-700 font-medium";
                 
-                let costDisplay = record.repairCost === null 
+                let costDisplay = record.repairCost === null || record.repairCost === undefined
                     ? `<span class="text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[11px] font-bold border border-amber-200">尚未報價</span>` 
-                    : `<span class="font-mono text-slate-900 font-bold">$${record.repairCost.toLocaleString()}</span>`;
+                    : `<span class="font-mono text-slate-900 font-bold">$${Number(record.repairCost).toLocaleString()}</span>`;
 
                 let cPickup = record.customerPickupDate || '未取走';
                 let cPickupDisplay = cPickup === '未取走' 
@@ -565,7 +588,7 @@
                 tr.innerHTML = `
                     <td class="text-center bg-slate-50/50 sticky left-0 z-10 border-r border-slate-300">
                         <button onclick="startRepairEdit(${record.id})" class="text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-300 px-2 py-0.5 rounded text-[11px] font-bold transition">✏️ 修改</button>
-                        <button onclick="deleteRepairRecord(${record.id})" class="text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-300 px-2 py-0.5 rounded text-[11px] font-bold transition">🗑️ 刪除</button>
+                        <button onclick="deleteRepairRecord('${record.firebaseKey}')" class="text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-300 px-2 py-0.5 rounded text-[11px] font-bold transition">🗑️ 刪除</button>
                     </td>
                     <td class="font-bold text-slate-900 font-mono">${record.receivedDate}</td>
                     <td class="font-extrabold text-slate-800">${record.customerName}</td>
@@ -584,7 +607,7 @@
         }
 
         function startRepairEdit(id) {
-            const record = repairRecords.find(r => r.id === id);
+            const record = repairRecords.find(r => r.id == id);
             if (!record) return;
 
             document.getElementById('repairRecordId').value = record.id;
@@ -658,13 +681,10 @@
             btn.className = "bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
         }
 
-        function deleteRepairRecord(id) {
-            if (confirm('確定刪除？')) {
-                if (document.getElementById('repairRecordId').value == id) cancelRepairEdit();
-                repairRecords = repairRecords.filter(r => r.id !== id);
-                localStorage.setItem('repair_records', JSON.stringify(repairRecords));
-                refreshRepairUI();
-                doRepairSearch(document.getElementById('searchPhone').value.trim());
+        function deleteRepairRecord(firebaseKey) {
+            if (firebaseKey && confirm('確定從雲端資料庫永久刪除此筆紀錄嗎？')) {
+                firebase.database().ref('repair_records/' + firebaseKey).remove()
+                    .then(() => alert('雲端刪除成功'));
             }
         }
 
@@ -673,37 +693,22 @@
             doRepairSearch('');
         }
 
-        // 🌟【終極原生 CSV 匯出引擎】免第三方套件、免網路，強迫瀏覽器實體強震下載！
         function exportRepairToCSV() {
             if (repairRecords.length === 0) {
                 alert('無紀錄可供匯出');
                 return;
             }
-            
-            // 建立 CSV 內容
             let csvContent = "送修日期,客戶姓名,電話號碼,產品型號 (數量),總項數,故障原因,更換零件,維修費用,通知取件日期,客戶取走日期,託運單號\n";
-            
             repairRecords.forEach(r => {
                 let row = [
-                    r.receivedDate,
-                    r.customerName,
-                    `="${r.customerPhone}"`, // 防止 Excel 數字自動去零
-                    `"${r.productModel.replace(/"/g, '""')}"`,
-                    r.quantity || 1,
-                    `"${r.issueReason.replace(/"/g, '""')}"`,
-                    `"${r.replacedParts.replace(/"/g, '""')}"`,
-                    r.repairCost !== null ? r.repairCost : "尚未報價",
-                    r.pickupDate,
-                    r.customerPickupDate,
-                    `="${r.shippingNo}"`
+                    r.receivedDate, r.customerName, `="${r.customerPhone}"`, `"${r.productModel.replace(/"/g, '""')}"`,
+                    r.quantity || 1, `"${r.issueReason.replace(/"/g, '""')}"`, `"${r.replacedParts.replace(/"/g, '""')}"`,
+                    r.repairCost !== null ? r.repairCost : "尚未報價", r.pickupDate, r.customerPickupDate, `="${r.shippingNo}"`
                 ].join(",");
                 csvContent += row + "\n";
             });
-
-            // 🌟 核心關鍵：加入 UTF-8 BOM (\uFEFF) 確保 Excel 雙擊打開百分之百不變亂碼
             const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: "text/csv;charset=utf-8;" });
             const link = document.createElement("a");
-            
             const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
             link.href = URL.createObjectURL(blob);
             link.setAttribute("download", `維修單報表_${dateStr}.csv`);
@@ -712,7 +717,8 @@
             document.body.removeChild(link);
         }
 
-        // ==================== 📦 [模組二] 零件庫存管理核心控制邏輯 ====================
+        // ==================== 📦 [模組二] 零件庫存管理雲端資料控制 ====================
+        
         document.getElementById('partForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
@@ -728,10 +734,11 @@
             };
 
             if (recordId) {
-                const index = partRecords.findIndex(p => p.id == recordId);
-                if (index !== -1) {
-                    partRecords[index] = { ...partRecords[index], ...formData };
-                    alert('更新成功');
+                const targetRecord = partRecords.find(p => p.id == recordId);
+                if (targetRecord && targetRecord.firebaseKey) {
+                    formData.id = Number(recordId);
+                    firebase.database().ref('part_records/' + targetRecord.firebaseKey).set(formData)
+                        .then(() => alert('雲端零件更新成功'));
                 }
                 cancelPartEdit();
             } else {
@@ -741,14 +748,9 @@
                     return;
                 }
                 formData.id = Date.now();
-                partRecords.unshift(formData);
-                alert('儲存成功');
+                dbPartRef.push(formData).then(() => alert('雲端零件入庫成功'));
             }
-
-            localStorage.setItem('part_records', JSON.stringify(partRecords));
             this.reset();
-            refreshPartUI();
-            doPartSearch(document.getElementById('searchPartKeyword').value.trim());
         });
 
         function doPartSearch(keywordQuery) {
@@ -782,9 +784,7 @@
         }
 
         function refreshPartUI() {
-            const totalCountEl = document.getElementById('partTotalCount');
-            if (!totalCountEl) return;
-            totalCountEl.textContent = partRecords.length;
+            document.getElementById('partTotalCount').textContent = partRecords.length;
 
             const latestTbody = document.getElementById('partLatestTableBody');
             const latestNoData = document.getElementById('partLatestNoDataMessage');
@@ -808,22 +808,22 @@
                 tr.innerHTML = `
                     <td class="text-center bg-slate-50/50 sticky left-0 z-10 border-r border-slate-300">
                         <button onclick="startPartEdit(${record.id})" class="text-emerald-600 hover:text-white hover:bg-emerald-600 border border-emerald-300 px-2 py-0.5 rounded text-[11px] font-bold transition">✏️ 修改</button>
-                        <button onclick="deletePartRecord(${record.id})" class="text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-300 px-2 py-0.5 rounded text-[11px] font-bold transition">🗑️ 刪除</button>
+                        <button onclick="deletePartRecord('${record.firebaseKey}')" class="text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-300 px-2 py-0.5 rounded text-[11px] font-bold transition">🗑️ 刪除</button>
                     </td>
                     <td class="font-mono font-bold text-slate-900">${record.partNo}</td>
                     <td class="font-extrabold text-slate-800 text-sm">${record.partNameZh}</td>
                     <td class="font-mono text-slate-500 font-semibold">${record.partNameEn}</td>
                     <td class="text-center font-bold ${record.partQty <= 3 ? 'text-rose-600 bg-rose-50 rounded font-black' : ''}">${record.partQty}</td>
                     <td class="font-mono font-bold text-blue-700 text-center">${record.cabinetNo}</td>
-                    <td class="text-right pr-4 font-mono font-bold text-rose-600">$${record.partCost.toLocaleString()}</td>
-                    <td class="text-right pr-4 font-mono font-bold text-emerald-700 bg-emerald-50/30">$${record.partPrice.toLocaleString()}</td>
+                    <td class="text-right pr-4 font-mono font-bold text-rose-600">$${Number(record.partCost).toLocaleString()}</td>
+                    <td class="text-right pr-4 font-mono font-bold text-emerald-700 bg-emerald-50/30">$${Number(record.partPrice).toLocaleString()}</td>
                 `;
                 targetTbody.appendChild(tr);
             });
         }
 
         function startPartEdit(id) {
-            const record = partRecords.find(p => p.id === id);
+            const record = partRecords.find(p => p.id == id);
             if (!record) return;
 
             document.getElementById('partRecordId').value = record.id;
@@ -854,32 +854,31 @@
             btn.className = "bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
         }
 
+        function deletePartRecord(firebaseKey) {
+            if (firebaseKey && confirm('確定從雲端永久刪除此零件品項嗎？')) {
+                firebase.database().ref('part_records/' + firebaseKey).remove()
+                    .then(() => alert('雲端零件刪除成功'));
+            }
+        }
+
         function clearPartSearch() {
             document.getElementById('searchPartKeyword').value = '';
             doPartSearch('');
         }
 
-        // 🌟【終極原生 CSV 匯出零件引擎】免外部雲端套件，強迫瀏覽器實體下載
         function exportPartToCSV() {
             if (partRecords.length === 0) {
                 alert('無資料可供匯出');
                 return;
             }
             let csvContent = "零件編號,中文名稱,英文名稱,庫存數量,存放櫃號,成本價 (TWD),對外售價 (TWD)\n";
-            
             partRecords.forEach(p => {
                 let row = [
-                    `="${p.partNo}"`,
-                    `"${p.partNameZh.replace(/"/g, '""')}"`,
-                    `"${p.partNameEn.replace(/"/g, '""')}"`,
-                    p.partQty,
-                    `="${p.cabinetNo}"`,
-                    p.partCost,
-                    p.partPrice
+                    `="${p.partNo}"`, `"${p.partNameZh.replace(/"/g, '""')}"`, `"${p.partNameEn.replace(/"/g, '""')}"`,
+                    p.partQty, `="${p.cabinetNo}"`, p.partCost, p.partPrice
                 ].join(",");
                 csvContent += row + "\n";
             });
-
             const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: "text/csv;charset=utf-8;" });
             const link = document.createElement("a");
             const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
