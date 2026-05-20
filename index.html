@@ -11,6 +11,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
+    <!-- 🌟 擴充：引入 SheetJS 用於解析 Excel 檔案 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <style>
         .excel-table th, .excel-table td {
             border: 1px solid #cbd5e1;
@@ -48,6 +51,10 @@
         </div>
     </div>
 
+    <!-- 隱藏的檔案選擇器 (用於 Excel 匯入) -->
+    <input type="file" id="repairExcelInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleRepairExcel(event)">
+    <input type="file" id="partExcelInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handlePartExcel(event)">
+
     <!-- ==================== 核心系統網頁內容 ==================== -->
     <div id="mainContent" class="hidden opacity-0 transition-opacity duration-300">
         
@@ -57,6 +64,17 @@
                 <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">☁️ <span>維修與零件雲端綜合面板</span></h1>
                 
                 <div class="flex items-center flex-wrap gap-3">
+                    <!-- 匯入功能按鈕組 -->
+                    <div class="flex space-x-2">
+                        <button onclick="document.getElementById('repairExcelInput').click()" class="bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-500 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
+                            📥 匯入維修 Excel
+                        </button>
+                        <button onclick="document.getElementById('partExcelInput').click()" class="bg-teal-600 hover:bg-teal-700 text-white border border-teal-500 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
+                            📥 匯入零件 Excel
+                        </button>
+                    </div>
+                    <div class="text-slate-600 font-bold select-none">｜</div>
+                    <!-- 匯出功能按鈕組 -->
                     <div class="flex space-x-2">
                         <button onclick="exportRepairToCSV()" class="bg-blue-700 hover:bg-blue-800 text-white border border-blue-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
                             📊 匯出全部維修單
@@ -341,7 +359,7 @@
 
     <!-- ==================== 核心 JavaScript 雲端同步與下載控制 ==================== -->
     <script>
-        // 🌟 核心金鑰設定：包含完整的資料庫端點與專屬安全憑證
+        // 🌟 核心金鑰設定：包含完整的資料庫端點與專專屬安全憑證
         const firebaseConfig = {
             apiKey: "AIzaSyBe5SYF7iyhs6Tq70OpRKGS63jWkyeWvxw",
             authDomain: "total-repair-system.firebaseapp.com",
@@ -476,6 +494,124 @@
             isFirebaseInitialized = false;
         }
 
+        // ==================== 📥 新增功能：Excel 檔案讀取與雲端批次同步邏輯 ====================
+        
+        // 處理維修檔案匯入
+        function handleRepairExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // 轉為 JSON 陣列 (將標題自動對齊為 Key)
+                    const jsonRows = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    if (jsonRows.length === 0) {
+                        alert('Excel 檔案內沒有找到任何數據列！');
+                        return;
+                    }
+
+                    if (!confirm(`偵測到 ${jsonRows.length} 筆維修資料，確定要全部匯入並同步至雲端嗎？`)) {
+                        event.target.value = '';
+                        return;
+                    }
+
+                    let successCount = 0;
+                    jsonRows.forEach((row, index) => {
+                        // 解析總項數 (計算產品型號括弧內的件數，防呆預設為 1)
+                        let totalQty = 1;
+                        const productStr = String(row['產品型號(數量)'] || row['產品型號'] || '');
+                        const qtyMatch = productStr.match(/\((\d+)件\)/);
+                        if (qtyMatch) {
+                            totalQty = parseInt(qtyMatch[1]) || 1;
+                        }
+
+                        const formData = {
+                            id: Date.now() + index, // 生成獨立 ID 防止衝突
+                            receivedDate: row['送送日期'] || row['送修日期'] || new Date().toISOString().split('T')[0],
+                            customerName: String(row['客戶姓名'] || '').trim(),
+                            customerPhone: String(row['電話號碼'] || '').trim(),
+                            products: productStr || '未登記型號',
+                            totalQty: totalQty,
+                            issueReason: String(row['故障原因'] || '未填寫').trim(),
+                            replacedParts: String(row['更換零件'] || '無').trim(),
+                            repairCost: parseInt(row['維修費用']) || 0,
+                            pickupDate: row['通知取件日期'] || '未取件',
+                            customerPickupDate: row['客戶取走日期'] || '未取回',
+                            shippingNo: String(row['託運單號'] || '無').trim()
+                        };
+
+                        // 直接推送到 Firebase 雲端
+                        dbRepairRef.push(formData);
+                        successCount++;
+                    });
+
+                    alert(`🎉 成功批次匯入 ${successCount} 筆維修單至雲端！`);
+                } catch (error) {
+                    alert('Excel 解析失敗，請確認檔案格式是否正確。錯誤訊息：' + error.message);
+                }
+                event.target.value = ''; // 清空選擇器
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 處理零件檔案匯入
+        function handlePartExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    const jsonRows = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    if (jsonRows.length === 0) {
+                        alert('Excel 檔案內沒有找到任何數據列！');
+                        return;
+                    }
+
+                    if (!confirm(`偵測到 ${jsonRows.length} 項零件物料，確定要全部匯入並同步至雲端嗎？`)) {
+                        event.target.value = '';
+                        return;
+                    }
+
+                    let successCount = 0;
+                    jsonRows.forEach((row, index) => {
+                        const formData = {
+                            id: Date.now() + index,
+                            partNo: String(row['零件編號'] || '').trim().toUpperCase(),
+                            partNameZh: String(row['中文名稱'] || '').trim(),
+                            partNameEn: String(row['英文名稱'] || '').trim(),
+                            partQty: parseInt(row['庫存數量']) || 0,
+                            cabinetNo: String(row['存放櫃號'] || '未分區').trim().toUpperCase(),
+                            partCost: parseInt(row['成本價'] || row['成本']) || 0,
+                            partPrice: parseInt(row['對外售價'] || row['售價']) || 0
+                        };
+
+                        dbPartRef.push(formData);
+                        successCount++;
+                    });
+
+                    alert(`🎉 成功批次匯入 ${successCount} 項零件庫存至雲端！`);
+                } catch (error) {
+                    alert('Excel 解析失敗，請確認檔案格式是否正確。錯誤訊息：' + error.message);
+                }
+                event.target.value = ''; 
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
         // ==================== 💼 [模組一] 維修客戶管理雲端資料控制 ====================
         
         function addProductField() {
@@ -509,153 +645,153 @@
             const modelInputs = document.getElementsByClassName('product-model-input');
             const qtyInputs = document.getElementsByClassName('product-qty-input');
             let productList = [];
+            let totalItems = 0;
             
             for (let i = 0; i < modelInputs.length; i++) {
                 const mVal = modelInputs[i].value.trim();
-                const qVal = qtyInputs[i].value;
-                if (mVal) productList.push(`${mVal} (${qVal}件)`);
+                const qVal = parseInt(qtyInputs[i].value) || 1;
+                if (mVal) {
+                    productList.push(`${mVal} (${qVal}件)`);
+                    totalItems += qVal;
+                }
             }
             const combinedProducts = productList.join(' / ');
 
             const formData = {
+                id: recordId ? parseInt(recordId) : Date.now(),
                 receivedDate: document.getElementById('receivedDate').value,
                 customerName: document.getElementById('customerName').value.trim(),
                 customerPhone: document.getElementById('customerPhone').value.trim(),
-                productModel: combinedProducts,
-                quantity: modelInputs.length,  
+                products: combinedProducts,
+                totalQty: totalItems,
                 issueReason: document.getElementById('issueReason').value.trim(),
                 replacedParts: document.getElementById('replacedParts').value.trim() || '無',
-                repairCost: rawCost !== '' ? Number(rawCost) : null,
-                pickupDate: document.getElementById('pickupDate').value || '未通知',
-                customerPickupDate: document.getElementById('customerPickupDate').value || '未取走',
+                repairCost: rawCost ? parseInt(rawCost) : 0,
+                pickupDate: document.getElementById('pickupDate').value || '未取件',
+                customerPickupDate: document.getElementById('customerPickupDate').value || '未取回',
                 shippingNo: document.getElementById('shippingNo').value.trim() || '無'
             };
 
-            if (recordId) {
-                const targetRecord = repairRecords.find(r => r.id == recordId);
-                if (targetRecord && targetRecord.firebaseKey) {
-                    formData.id = Number(recordId);
-                    firebase.database().ref('repair_records/' + targetRecord.firebaseKey).set(formData)
-                        .then(() => {
-                            alert('雲端更新成功');
-                            cancelRepairEdit();
-                        });
-                }
+            const firebaseKey = this.dataset.firebaseKey;
+
+            if (firebaseKey) {
+                dbRepairRef.child(firebaseKey).update(formData)
+                    .then(() => {
+                        alert('維修單更新成功！');
+                        cancelRepairEdit();
+                    })
+                    .catch(err => alert('更新失敗：' + err.message));
             } else {
-                formData.id = Date.now();
-                dbRepairRef.push(formData).then(() => {
-                    alert('雲端儲存成功');
-                    document.getElementById('repairForm').reset();
-                    const dateInput = document.getElementById('receivedDate');
-                    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-                    resetProductFields();
-                });
+                dbRepairRef.push(formData)
+                    .then(() => {
+                        alert('新維修單已同步至雲端！');
+                        document.getElementById('repairForm').reset();
+                        resetProductFields();
+                        document.getElementById('receivedDate').value = new Date().toISOString().split('T')[0];
+                    })
+                    .catch(err => alert('儲存失敗：' + err.message));
             }
         });
 
         function refreshRepairUI() {
             document.getElementById('repairTotalCount').innerText = repairRecords.length;
+            const latestBody = document.getElementById('repairLatestTableBody');
+            latestBody.innerHTML = '';
+
             const latest10 = repairRecords.slice(0, 10);
-            
-            const tbody = document.getElementById('repairLatestTableBody');
-            tbody.innerHTML = '';
-            
             if (latest10.length === 0) {
                 document.getElementById('repairLatestNoDataMessage').classList.remove('hidden');
             } else {
                 document.getElementById('repairLatestNoDataMessage').classList.add('hidden');
-                latest10.forEach(record => {
-                    tbody.appendChild(createRepairRow(record));
+                latest10.forEach(rec => {
+                    latestBody.appendChild(createRepairRow(rec));
                 });
             }
         }
 
-        function createRepairRow(record) {
+        function createRepairRow(rec) {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="text-center space-x-1">
-                    <button onclick="editRepairRecord('${record.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-xs">改</button>
-                    <button onclick="deleteRepairRecord('${record.firebaseKey}')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-0.5 rounded text-xs">刪</button>
+                    <button onclick="editRepairRecord('${rec.firebaseKey}')" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">改</button>
+                    <button onclick="deleteRepairRecord('${rec.firebaseKey}')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">刪</button>
                 </td>
-                <td>${record.receivedDate || ''}</td>
-                <td class="font-bold">${record.customerName || ''}</td>
-                <td class="font-mono">${record.customerPhone || ''}</td>
-                <td class="text-blue-700 font-medium">${record.productModel || ''}</td>
-                <td class="text-center">${record.quantity || 1}</td>
-                <td class="text-rose-600">${record.issueReason || ''}</td>
-                <td>${record.replacedParts || '無'}</td>
-                <td class="font-bold text-right">${record.repairCost !== null && record.repairCost !== undefined ? '$' + record.repairCost : '-'}</td>
-                <td>${record.pickupDate || '未通知'}</td>
-                <td class="text-blue-600">${record.customerPickupDate || '未取走'}</td>
-                <td class="font-mono">${record.shippingNo || '無'}</td>
+                <td>${rec.receivedDate || ''}</td>
+                <td class="font-bold text-slate-700">${rec.customerName || ''}</td>
+                <td class="font-mono text-blue-600">${rec.customerPhone || ''}</td>
+                <td class="max-w-xs truncate" title="${rec.products || ''}">${rec.products || ''}</td>
+                <td class="text-center font-bold">${rec.totalQty || 0}</td>
+                <td class="text-rose-600">${rec.issueReason || ''}</td>
+                <td>${rec.replacedParts || ''}</td>
+                <td class="font-bold text-right text-emerald-700">$${(rec.repairCost || 0).toLocaleString()}</td>
+                <td>${rec.pickupDate || ''}</td>
+                <td class="font-semibold text-blue-700">${rec.customerPickupDate || ''}</td>
+                <td class="font-mono">${rec.shippingNo || ''}</td>
             `;
             return tr;
         }
 
-        function editRepairRecord(id) {
-            const record = repairRecords.find(r => r.id == id);
-            if (!record) return;
+        function editRepairRecord(key) {
+            const rec = repairRecords.find(item => item.firebaseKey === key);
+            if (!rec) return;
 
-            document.getElementById('repairRecordId').value = record.id;
-            document.getElementById('receivedDate').value = record.receivedDate;
-            document.getElementById('customerName').value = record.customerName;
-            document.getElementById('customerPhone').value = record.customerPhone;
-            document.getElementById('issueReason').value = record.issueReason;
-            document.getElementById('replacedParts').value = record.replacedParts === '無' ? '' : record.replacedParts;
-            document.getElementById('repairCost').value = record.repairCost !== null ? record.repairCost : '';
-            document.getElementById('pickupDate').value = record.pickupDate === '未通知' ? '' : record.pickupDate;
-            document.getElementById('customerPickupDate').value = record.customerPickupDate === '未取走' ? '' : record.customerPickupDate;
-            document.getElementById('shippingNo').value = record.shippingNo === '無' ? '' : record.shippingNo;
+            document.getElementById('repairFormTitle').innerText = '✏️ 正在修改維修單';
+            document.getElementById('cancelRepairEditBtn').classList.remove('hidden');
+            document.getElementById('repairSubmitBtn').innerText = '💾 儲存修改內容';
+            document.getElementById('repairForm').dataset.firebaseKey = key;
 
-            // 還原產品型號多重欄位
+            document.getElementById('repairRecordId').value = rec.id || '';
+            document.getElementById('receivedDate').value = rec.receivedDate || '';
+            document.getElementById('customerName').value = rec.customerName || '';
+            document.getElementById('customerPhone').value = rec.customerPhone || '';
+            document.getElementById('issueReason').value = rec.issueReason || '';
+            document.getElementById('replacedParts').value = rec.replacedParts === '無' ? '' : (rec.replacedParts || '');
+            document.getElementById('repairCost').value = rec.repairCost || 0;
+            document.getElementById('pickupDate').value = rec.pickupDate === '未取件' ? '' : (rec.pickupDate || '');
+            document.getElementById('customerPickupDate').value = rec.customerPickupDate === '未取回' ? '' : (rec.customerPickupDate || '');
+            document.getElementById('shippingNo').value = rec.shippingNo === '無' ? '' : (rec.shippingNo || '');
+
             const container = document.getElementById('productFieldsContainer');
             container.innerHTML = '';
             
-            if (record.productModel) {
-                const parts = record.productModel.split(' / ');
-                parts.forEach((part, index) => {
-                    const match = part.match(/(.*)\s\((\d+)件\)/);
-                    let model = part;
-                    let qty = 1;
-                    if (match) {
-                        model = match[1];
-                        qty = match[2];
-                    }
-                    
+            if (rec.products) {
+                const parts = rec.products.split(' / ');
+                parts.forEach((partStr, index) => {
+                    const match = partStr.match(/(.*)\s\((\d+)件\)/);
+                    const model = match ? match[1] : partStr;
+                    const qty = match ? match[2] : 1;
+
                     const group = document.createElement('div');
                     group.className = 'product-group flex items-center space-x-2' + (index > 0 ? ' border-l-2 border-blue-300 pl-2 ml-2' : '');
                     group.innerHTML = `
-                        <input type="text" value="${model}" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
-                        <input type="number" value="${qty}" min="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
-                        ${index > 0 ? `<button type="button" onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-700 font-bold px-1">✕</button>` : ''}
+                        <input type="text" value="${model}" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                        <input type="number" value="${qty}" min="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                        ${index > 0 ? '<button type="button" onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-700 font-bold px-1">✕</button>' : ''}
                     `;
                     container.appendChild(group);
                 });
             } else {
                 resetProductFields();
             }
-
-            document.getElementById('repairFormTitle').innerText = '✏️ 正在修改維修單';
-            document.getElementById('repairSubmitBtn').innerText = '💾 更新維修單';
-            document.getElementById('cancelRepairEditBtn').classList.remove('hidden');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function cancelRepairEdit() {
-            document.getElementById('repairRecordId').value = '';
-            document.getElementById('repairForm').reset();
-            const dateInput = document.getElementById('receivedDate');
-            if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-            resetProductFields();
             document.getElementById('repairFormTitle').innerText = '📝 建立新維修單';
-            document.getElementById('repairSubmitBtn').innerText = '💾 儲存維修單';
             document.getElementById('cancelRepairEditBtn').classList.add('hidden');
+            document.getElementById('repairSubmitBtn').innerText = '💾 儲存維修單';
+            delete document.getElementById('repairForm').dataset.firebaseKey;
+            
+            document.getElementById('repairForm').reset();
+            resetProductFields();
+            document.getElementById('receivedDate').value = new Date().toISOString().split('T')[0];
         }
 
-        function deleteRepairRecord(firebaseKey) {
-            if (confirm('確定要永久刪除此筆雲端維修紀錄嗎？')) {
-                firebase.database().ref('repair_records/' + firebaseKey).remove()
-                    .then(() => alert('資料已自雲端移除'));
+        function deleteRepairRecord(key) {
+            if (confirm('確定要從雲端永久刪除此筆維修單嗎？')) {
+                dbRepairRef.child(key).remove()
+                    .then(() => alert('刪除成功！'))
+                    .catch(err => alert('刪除失敗：' + err.message));
             }
         }
 
@@ -663,23 +799,20 @@
             const wrapper = document.getElementById('repairSearchResultWrapper');
             const tbody = document.getElementById('repairSearchTableBody');
             
-            tbody.innerHTML = '';
             if (!phoneKeyword) {
                 wrapper.classList.add('hidden');
+                tbody.innerHTML = '';
                 return;
             }
 
-            const results = repairRecords.filter(r => r.customerPhone && r.customerPhone.includes(phoneKeyword));
-            document.getElementById('repairSearchCount').innerText = results.length;
-            
-            if (results.length === 0) {
-                wrapper.classList.add('hidden');
-            } else {
-                wrapper.classList.remove('hidden');
-                results.forEach(record => {
-                    tbody.appendChild(createRepairRow(record));
-                });
-            }
+            const filtered = repairRecords.filter(rec => (rec.customerPhone || '').includes(phoneKeyword));
+            document.getElementById('repairSearchCount').innerText = filtered.length;
+            tbody.innerHTML = '';
+
+            filtered.forEach(rec => {
+                tbody.appendChild(createRepairRow(rec));
+            });
+            wrapper.classList.remove('hidden');
         }
 
         function clearRepairSearch() {
@@ -687,110 +820,116 @@
             doRepairSearch('');
         }
 
+
         // ==================== ⚙️ [模組二] 零件庫存管理雲端資料控制 ====================
-        
+
         document.getElementById('partForm').addEventListener('submit', function(e) {
             e.preventDefault();
+
             const recordId = document.getElementById('partRecordId').value;
             
             const formData = {
-                partNo: document.getElementById('partNo').value.trim(),
+                id: recordId ? parseInt(recordId) : Date.now(),
+                partNo: document.getElementById('partNo').value.trim().toUpperCase(),
                 partNameZh: document.getElementById('partNameZh').value.trim(),
                 partNameEn: document.getElementById('partNameEn').value.trim(),
-                partQty: Number(document.getElementById('partQty').value),
-                cabinetNo: document.getElementById('cabinetNo').value.trim(),
-                partCost: Number(document.getElementById('partCost').value),
-                partPrice: Number(document.getElementById('partPrice').value)
+                partQty: parseInt(document.getElementById('partQty').value) || 0,
+                cabinetNo: document.getElementById('cabinetNo').value.trim().toUpperCase(),
+                partCost: parseInt(document.getElementById('partCost').value) || 0,
+                partPrice: parseInt(document.getElementById('partPrice').value) || 0
             };
 
-            if (recordId) {
-                const targetRecord = partRecords.find(p => p.id == recordId);
-                if (targetRecord && targetRecord.firebaseKey) {
-                    formData.id = Number(recordId);
-                    firebase.database().ref('part_records/' + targetRecord.firebaseKey).set(formData)
-                        .then(() => {
-                            alert('零件雲端更新成功');
-                            cancelPartEdit();
-                        });
-                }
+            const firebaseKey = this.dataset.firebaseKey;
+
+            if (firebaseKey) {
+                dbPartRef.child(firebaseKey).update(formData)
+                    .then(() => {
+                        alert('零件庫存更新成功！');
+                        cancelPartEdit();
+                    })
+                    .catch(err => alert('更新失敗：' + err.message));
             } else {
-                formData.id = Date.now();
-                dbPartRef.push(formData).then(() => {
-                    alert('零件雲端新增成功');
-                    document.getElementById('partForm').reset();
-                    document.getElementById('partQty').value = '0';
-                });
+                dbPartRef.push(formData)
+                    .then(() => {
+                        alert('新零件已成功上傳雲端！');
+                        document.getElementById('partForm').reset();
+                        document.getElementById('partQty').value = 0;
+                    })
+                    .catch(err => alert('儲存失敗：' + err.message));
             }
         });
 
         function refreshPartUI() {
             document.getElementById('partTotalCount').innerText = partRecords.length;
+            const latestBody = document.getElementById('partLatestTableBody');
+            latestBody.innerHTML = '';
+
             const latest10 = partRecords.slice(0, 10);
-            
-            const tbody = document.getElementById('partLatestTableBody');
-            tbody.innerHTML = '';
-            
             if (latest10.length === 0) {
                 document.getElementById('partLatestNoDataMessage').classList.remove('hidden');
             } else {
                 document.getElementById('partLatestNoDataMessage').classList.add('hidden');
-                latest10.forEach(record => {
-                    tbody.appendChild(createPartRow(record));
+                latest10.forEach(rec => {
+                    latestBody.appendChild(createPartRow(rec));
                 });
             }
         }
 
-        function createPartRow(record) {
+        function createPartRow(rec) {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="text-center space-x-1">
-                    <button onclick="editPartRecord('${record.id}')" class="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-0.5 rounded text-xs">改</button>
-                    <button onclick="deletePartRecord('${record.firebaseKey}')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-0.5 rounded text-xs">刪</button>
+                    <button onclick="editPartRecord('${rec.firebaseKey}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-0.5 rounded text-[10px] font-bold">改</button>
+                    <button onclick="deletePartRecord('${rec.firebaseKey}')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-0.5 rounded text-[10px] font-bold">刪</button>
                 </td>
-                <td class="font-mono font-bold">${record.partNo || ''}</td>
-                <td class="text-emerald-800 font-medium">${record.partNameZh || ''}</td>
-                <td class="font-mono text-slate-500">${record.partNameEn || ''}</td>
-                <td class="font-bold text-center ${record.partQty <= 3 ? 'text-rose-600 bg-rose-50' : ''}">${record.partQty || 0}</td>
-                <td class="font-mono text-center">${record.cabinetNo || ''}</td>
-                <td class="text-right text-rose-600">$${record.partCost || 0}</td>
-                <td class="text-right text-emerald-600 font-bold">$${record.partPrice || 0}</td>
+                <td class="font-mono font-bold text-slate-700">${rec.partNo || ''}</td>
+                <td class="font-medium">${rec.partNameZh || ''}</td>
+                <td class="font-mono text-slate-500 text-[11px]">${rec.partNameEn || ''}</td>
+                <td class="text-center font-bold ${rec.partQty <= 3 ? 'text-rose-600 bg-rose-50' : 'text-emerald-700'}">${rec.partQty || 0}</td>
+                <td class="font-mono text-center font-semibold bg-slate-50">${rec.cabinetNo || ''}</td>
+                <td class="font-mono text-right text-rose-600">$${(rec.partCost || 0).toLocaleString()}</td>
+                <td class="font-mono text-right text-emerald-700 font-bold">$${(rec.partPrice || 0).toLocaleString()}</td>
             `;
             return tr;
         }
 
-        function editPartRecord(id) {
-            const record = partRecords.find(p => p.id == id);
-            if (!record) return;
+        function editPartRecord(key) {
+            const rec = partRecords.find(item => item.firebaseKey === key);
+            if (!rec) return;
 
-            document.getElementById('partRecordId').value = record.id;
-            document.getElementById('partNo').value = record.partNo;
-            document.getElementById('partNameZh').value = record.partNameZh;
-            document.getElementById('partNameEn').value = record.partNameEn;
-            document.getElementById('partQty').value = record.partQty;
-            document.getElementById('cabinetNo').value = record.cabinetNo;
-            document.getElementById('partCost').value = record.partCost;
-            document.getElementById('partPrice').value = record.partPrice;
-
-            document.getElementById('partFormTitle').innerText = '✏️ 正在修改零件資料';
-            document.getElementById('partSubmitBtn').innerText = '💾 更新零件';
+            document.getElementById('partFormTitle').innerText = '⚙️ 正在修改零件物料庫存';
             document.getElementById('cancelPartEditBtn').classList.remove('hidden');
-            
-            document.getElementById('partFormTitle').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('partSubmitBtn').innerText = '💾 儲存修改庫存';
+            document.getElementById('partForm').dataset.firebaseKey = key;
+
+            document.getElementById('partRecordId').value = rec.id || '';
+            document.getElementById('partNo').value = rec.partNo || '';
+            document.getElementById('partNameZh').value = rec.partNameZh || '';
+            document.getElementById('partNameEn').value = rec.partNameEn || '';
+            document.getElementById('partQty').value = rec.partQty || 0;
+            document.getElementById('cabinetNo').value = rec.cabinetNo || '';
+            document.getElementById('partCost').value = rec.partCost || 0;
+            document.getElementById('partPrice').value = rec.partPrice || 0;
+
+            const element = document.getElementById('partFormTitle');
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function cancelPartEdit() {
-            document.getElementById('partRecordId').value = '';
-            document.getElementById('partForm').reset();
-            document.getElementById('partQty').value = '0';
             document.getElementById('partFormTitle').innerText = '⚙️ 新增零件資料';
-            document.getElementById('partSubmitBtn').innerText = '💾 儲存零件';
             document.getElementById('cancelPartEditBtn').classList.add('hidden');
+            document.getElementById('partSubmitBtn').innerText = '💾 儲存零件';
+            delete document.getElementById('partForm').dataset.firebaseKey;
+            
+            document.getElementById('partForm').reset();
+            document.getElementById('partQty').value = 0;
         }
 
-        function deletePartRecord(firebaseKey) {
-            if (confirm('確定要永久刪除此筆零件庫存嗎？')) {
-                firebase.database().ref('part_records/' + firebaseKey).remove()
-                    .then(() => alert('零件已自雲端移除'));
+        function deletePartRecord(key) {
+            if (confirm('確定要從雲端庫存中永久刪除此零件物料嗎？')) {
+                dbPartRef.child(key).remove()
+                    .then(() => alert('物料刪除成功！'))
+                    .catch(err => alert('刪除失敗：' + err.message));
             }
         }
 
@@ -798,30 +937,27 @@
             const wrapper = document.getElementById('partSearchResultWrapper');
             const tbody = document.getElementById('partSearchTableBody');
             
-            tbody.innerHTML = '';
             if (!keyword) {
                 wrapper.classList.add('hidden');
+                tbody.innerHTML = '';
                 return;
             }
 
-            const lowerKey = keyword.toLowerCase();
-            const results = partRecords.filter(p => 
-                (p.partNo && p.partNo.toLowerCase().includes(lowerKey)) ||
-                (p.partNameZh && p.partNameZh.toLowerCase().includes(lowerKey)) ||
-                (p.partNameEn && p.partNameEn.toLowerCase().includes(lowerKey)) ||
-                (p.cabinetNo && p.cabinetNo.toLowerCase().includes(lowerKey))
+            const lower = keyword.toLowerCase();
+            const filtered = partRecords.filter(rec => 
+                (rec.partNo || '').toLowerCase().includes(lower) ||
+                (rec.partNameZh || '').toLowerCase().includes(lower) ||
+                (rec.partNameEn || '').toLowerCase().includes(lower) ||
+                (rec.cabinetNo || '').toLowerCase().includes(lower)
             );
 
-            document.getElementById('partSearchCount').innerText = results.length;
+            document.getElementById('partSearchCount').innerText = filtered.length;
+            tbody.innerHTML = '';
 
-            if (results.length === 0) {
-                wrapper.classList.add('hidden');
-            } else {
-                wrapper.classList.remove('hidden');
-                results.forEach(record => {
-                    tbody.appendChild(createPartRow(record));
-                });
-            }
+            filtered.forEach(rec => {
+                tbody.appendChild(createPartRow(rec));
+            });
+            wrapper.classList.remove('hidden');
         }
 
         function clearPartSearch() {
@@ -829,44 +965,74 @@
             doPartSearch('');
         }
 
-        // ==================== 📊 [模組三] 全域 CSV 資料匯出引擎 ====================
-        
-        function downloadCSV(csvContent, fileName) {
-            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        // ==================== 📊 [模組三] 資料安全防護導出控制 (CSV 引擎) ====================
+
+        function exportRepairToCSV() {
+            if (repairRecords.length === 0) {
+                alert('目前沒有任何維修資料可以下載！');
+                return;
+            }
+            
+            let csvContent = "\uFEFF"; // 解決 Excel 開啟亂碼的 BOM
+            csvContent += "送修日期,客戶姓名,電話號碼,產品型號(數量),總項數,故障原因,更換零件,維修費用,通知取件日期,客戶取走日期,託運單號\n";
+            
+            repairRecords.forEach(rec => {
+                const row = [
+                    rec.receivedDate || '',
+                    rec.customerName || '',
+                    rec.customerPhone || '',
+                    `"${(rec.products || '').replace(/"/g, '""')}"`,
+                    rec.totalQty || 0,
+                    `"${(rec.issueReason || '').replace(/"/g, '""')}"`,
+                    `"${(rec.replacedParts || '').replace(/"/g, '""')}"`,
+                    rec.repairCost || 0,
+                    rec.pickupDate || '',
+                    rec.customerPickupDate || '',
+                    rec.shippingNo || ''
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+            
+            downloadCSV(csvContent, `雲端即時維修單資料庫_${new Date().toISOString().split('T')[0]}.csv`);
+        }
+
+        function exportPartToCSV() {
+            if (partRecords.length === 0) {
+                alert('目前零件庫存為空，無法導出！');
+                return;
+            }
+            
+            let csvContent = "\uFEFF";
+            csvContent += "零件編號,中文名稱,英文名稱,庫存數量,存放櫃號,成本價,對外售價\n";
+            
+            partRecords.forEach(rec => {
+                const row = [
+                    rec.partNo || '',
+                    `"${(rec.partNameZh || '').replace(/"/g, '""')}"`,
+                    `"${(rec.partNameEn || '').replace(/"/g, '""')}"`,
+                    rec.partQty || 0,
+                    rec.cabinetNo || '',
+                    rec.partCost || 0,
+                    rec.partPrice || 0
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+            
+            downloadCSV(csvContent, `雲端即時零件庫存庫_${new Date().toISOString().split('T')[0]}.csv`);
+        }
+
+        function downloadCSV(content, filename) {
+            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             if (link.download !== undefined) {
                 const url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
-                link.setAttribute("download", fileName);
+                link.setAttribute("download", filename);
                 link.style.visibility = 'hidden';
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
             }
-        }
-
-        function exportRepairToCSV() {
-            if (repairRecords.length === 0) {
-                alert('目前沒有維修資料可供匯出！');
-                return;
-            }
-            let csv = '送修日期,客戶姓名,電話號碼,產品型號(數量),總項數,故障原因,更換零件,維修費用,通知取件日期,客戶取走日期,託運單號\n';
-            repairRecords.forEach(r => {
-                csv += `"${r.receivedDate || ''}","${r.customerName || ''}","${r.customerPhone || ''}","${(r.productModel || '').replace(/"/g, '""')}","${r.quantity || 1}","${(r.issueReason || '').replace(/"/g, '""')}","${(r.replacedParts || '').replace(/"/g, '""')}","${r.repairCost !== null ? r.repairCost : ''}","${r.pickupDate || ''}","${r.customerPickupDate || ''}","${r.shippingNo || ''}"\n`;
-            });
-            downloadCSV(csv, `維修單資料匯出_${new Date().toISOString().split('T')[0]}.csv`);
-        }
-
-        function exportPartToCSV() {
-            if (partRecords.length === 0) {
-                alert('目前沒有零件資料可供匯出！');
-                return;
-            }
-            let csv = '零件編號,中文名稱,英文名稱,庫存數量,存放櫃號,成本價,對外售價\n';
-            partRecords.forEach(p => {
-                csv += `"${p.partNo || ''}","${(p.partNameZh || '').replace(/"/g, '""')}","${(p.partNameEn || '').replace(/"/g, '""')}","${p.partQty || 0}","${p.cabinetNo || ''}","${p.partCost || 0}","${p.partPrice || 0}"\n`;
-            });
-            downloadCSV(csv, `零件庫存資料匯出_${new Date().toISOString().split('T')[0]}.csv`);
         }
     </script>
 </body>
