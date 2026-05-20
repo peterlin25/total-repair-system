@@ -3,871 +3,532 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>雲端即時同步管理系統</title>
-    <!-- 引入 Tailwind CSS -->
-    <script src="https://tailwindcss.com"></script>
-    
-    <!-- 🌟 核心升級：引入 Google Firebase 官方雲端資料庫核心套件 -->
+    <title>維修客戶與零件雲端管理後台</title>
+    <!-- 引入 Tailwind CSS 確保畫面精美 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Firebase 核心與即時資料庫 SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-    <style>
-        .excel-table th, .excel-table td {
-            border: 1px solid #cbd5e1;
-            padding: 10px 14px;
-            white-space: nowrap;
-        }
-        .excel-table th {
-            background-color: #f1f5f9;
-            font-weight: bold;
-            color: #1e293b;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .repair-rows tr:nth-child(even) { background-color: #f8fafc; }
-        .repair-rows tr:hover { background-color: #f1f5f9; }
-        
-        .part-rows tr:nth-child(even) { background-color: #f0fdf4; }
-        .part-rows tr:hover { background-color: #dcfce7; }
-    </style>
 </head>
-<body class="bg-slate-100 font-sans antialiased pb-24 text-slate-800">
+<body class="bg-gray-100 min-h-screen text-gray-800">
 
-    <!-- ==================== 密碼驗證遮罩層 ==================== -->
-    <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-4">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-6 border border-slate-100">
-            <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-2xl mx-auto shadow-sm">🔒</div>
-            <h2 class="text-xl font-bold text-slate-800">雲端安全防護鎖</h2>
-            <div class="space-y-3">
-                <input type="password" id="systemPassword" placeholder="請輸入密碼" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-center text-lg font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none tracking-widest">
+    <div class="container mx-auto p-4 md:p-6 max-w-7xl">
+        <!-- 頂部標題區 -->
+        <header class="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
+                🛠️ 雲端維修與零件整合管理系統
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">即時同步 Firebase Database · 支援智慧型 Excel 格式 CSV 資料備份與整批匯入</p>
+        </header>
+
+        <!-- 主區塊：左右/上下 雙模組佈局 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- ======================================================= -->
+            <!-- 💼 模組一：維修客戶管理 (佔 2 分之 3 寬度) -->
+            <!-- ======================================================= -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 pb-2 border-b">💼 客戶維修案件管理</h2>
+                
+                <!-- 智慧控制區：搜尋與動態功能按鈕 -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div class="w-full md:w-64">
+                        <input type="text" id="searchPhone" placeholder="🔍 輸入電話號碼即時搜尋..." 
+                               class="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button id="openAddModalBtn" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium shadow hover:bg-blue-700 transition">
+                            ➕ 新增維修紀錄
+                        </button>
+                        <button id="exportRepairBtn" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium shadow hover:bg-green-700 transition">
+                            📥 匯出 CSV 備份
+                        </button>
+                        <!-- 隱藏的檔案選擇器與匯入按鈕 -->
+                        <input type="file" id="importRepairInput" accept=".csv" class="hidden" />
+                        <button id="importRepairBtn" class="bg-purple-600 text-white px-4 py-2 rounded text-sm font-medium shadow hover:bg-purple-700 transition">
+                            📤 匯入 Excel 舊檔
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 資料表格區 -->
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200 text-left">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">客戶姓名</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">聯絡電話</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">設備項目</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">狀況描述</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">案件進度</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">建檔時間</th>
+                                <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">操作動作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="repairTableBody" class="bg-white divide-y divide-gray-200 text-sm">
+                            <tr>
+                                <td colspan="7" class="px-4 py-8 text-center text-gray-400">雲端資料載入中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">💡 預設僅列出最新 10 筆案件，使用關鍵字搜尋時將會解鎖顯示完整相符資料。</p>
             </div>
-            <button onclick="verifyPassword()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition shadow-sm tracking-wide">
-                連線並解鎖系統
-            </button>
+
+            <!-- ======================================================= -->
+            <!-- 🔧 模組二：通用零件庫存盤點 (佔 1 分之 3 寬度) -->
+            <!-- ======================================================= -->
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-800 mb-4 pb-2 border-b">🔧 零件與耗材庫存變更</h2>
+                
+                <!-- 快速新增零件表單 -->
+                <form id="partForm" class="bg-gray-50 p-4 rounded-lg mb-4 border space-y-3">
+                    <input type="hidden" id="partId" />
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">零件名稱 / 規格</label>
+                        <input type="text" id="partName" required placeholder="例如：耐磨貓抓皮 (焦糖色)" class="w-full border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">目前庫存量</label>
+                            <input type="number" id="partStock" required min="0" placeholder="0" class="w-full border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">安全庫存水位</label>
+                            <input type="number" id="partMin" required min="0" placeholder="5" class="w-full border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                    </div>
+                    <button type="submit" id="partSubmitBtn" class="w-full bg-slate-700 text-white text-sm py-2 rounded font-medium hover:bg-slate-800 transition">
+                        💾 儲存並更新庫存
+                    </button>
+                    <button type="button" id="cancelPartEditBtn" class="w-full bg-gray-200 text-gray-700 text-sm py-1 rounded hidden hover:bg-gray-300 transition">
+                        取消修改
+                    </button>
+                </form>
+
+                <!-- 零件即時動態清單 -->
+                <div class="space-y-2 max-h-[400px] overflow-y-auto pr-1" id="partsContainer">
+                    <p class="text-center text-sm text-gray-400 py-4">庫存清單載入中...</p>
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <!-- ==================== 核心系統網頁內容 ==================== -->
-    <div id="mainContent" class="hidden opacity-0 transition-opacity duration-300">
-        
-        <!-- 頂部導覽列 -->
-        <header class="bg-slate-900 text-white shadow-sm sticky top-0 z-50">
-            <div class="max-w-[95%] mx-auto px-6 py-4 flex justify-between items-center flex-wrap gap-4">
-                <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">☁️ <span>維修與零件雲端綜合面板</span></h1>
-                
-                <div class="flex items-center flex-wrap gap-3">
-                    <div class="flex space-x-2">
-                        <button onclick="exportRepairToCSV()" class="bg-blue-700 hover:bg-blue-800 text-white border border-blue-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
-                            📊 匯出全部維修單
-                        </button>
-                        <button onclick="exportPartToCSV()" class="bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
-                            📊 匯出全部零件庫
-                        </button>
-                    </div>
-                    <button onclick="lockSystem()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md font-medium border border-slate-700 transition">🔒 登出</button>
-                </div>
+    <!-- ======================================================= -->
+    <!-- 🖥️ 隱藏彈窗 (Modal)：維修紀錄新增/修改表單 -->
+    <!-- ======================================================= -->
+    <div id="repairModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden border">
+            <div class="bg-gray-900 px-6 py-4 flex items-center justify-between">
+                <h3 id="modalTitle" class="text-lg font-bold text-white">新增維修紀錄</h3>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-white text-xl">&times;</button>
             </div>
-        </header>
-
-        <!-- 主區塊 -->
-        <main class="max-w-[95%] mx-auto px-6 mt-8 space-y-12">
-            
-            <!-- ==================== 【綜合管理：上半部 - 💼 維修客戶管理區】 ==================== -->
-            <div class="space-y-6">
-                <div class="border-l-4 border-blue-600 pl-3">
-                    <h2 class="text-lg font-black text-slate-800 tracking-wide">💼 維修客戶管理系統區 (雲端即時同步)</h2>
+            <form id="repairForm" class="p-6 space-y-4">
+                <input type="hidden" id="repairId" />
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">客戶姓名 *</label>
+                    <input type="text" id="customerName" required class="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
-
-                <!-- 維修單輸入（單行橫向） -->
-                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                        <h2 id="repairFormTitle" class="text-sm font-bold text-slate-700">📝 建立新維修單</h2>
-                        <button id="cancelRepairEditBtn" onclick="cancelRepairEdit()" class="hidden text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded-md shadow-sm font-semibold transition">取消修改</button>
-                    </div>
-                    <div class="overflow-x-auto p-5 bg-slate-50/20">
-                        <form id="repairForm" class="flex items-center space-x-3 whitespace-nowrap min-w-max">
-                            <input type="hidden" id="repairRecordId">
-                            
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">送修日期</label>
-                                <input type="date" id="receivedDate" required class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">客戶姓名</label>
-                                <input type="text" id="customerName" required placeholder="姓名" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">電話號碼</label>
-                                <input type="tel" id="customerPhone" required placeholder="電話" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            
-                            <!-- 動態產品型號與數量容器 -->
-                            <div id="productFieldsContainer" class="flex items-center space-x-2 bg-blue-50 p-1.5 rounded-xl border border-blue-200">
-                                <div class="product-group flex items-center space-x-2">
-                                    <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                                    <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                                </div>
-                            </div>
-                            <button type="button" onclick="addProductField()" class="bg-blue-100 text-blue-800 hover:bg-blue-200 text-xs font-bold py-2 px-2.5 rounded-lg transition shadow-sm h-[36px]">➕ 增加型號</button>
-                            
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-rose-600">故障原因</label>
-                                <input type="text" id="issueReason" required placeholder="原因" class="w-48 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-emerald-700">更換零件</label>
-                                <input type="text" id="replacedParts" placeholder="零件" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">維修費用</label>
-                                <input type="number" id="repairCost" min="0" placeholder="費用" class="w-28 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            </div>
-                            
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">通知取件日期</label>
-                                <input type="date" id="pickupDate" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            </div>
-                            
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-blue-700">客戶取走日期</label>
-                                <input type="date" id="customerPickupDate" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
-                            </div>
-                            
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">託運單號</label>
-                                <input type="text" id="shippingNo" placeholder="單號" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <button type="submit" id="repairSubmitBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]">💾 儲存維修單</button>
-                        </form>
-                    </div>
-                </section>
-
-                <!-- 維修電話搜尋看板 -->
-                <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-3">
-                    <div class="text-xs font-bold text-slate-400 select-none tracking-wider">〔以電話號碼搜尋〕</div>
-                    <div class="flex gap-3">
-                        <input type="text" id="searchPhone" placeholder="請輸入客戶完整的電話號碼進行篩選..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:outline-none focus:border-blue-500">
-                        <button onclick="clearRepairSearch()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 border rounded-lg text-xs font-semibold transition">清除</button>
-                    </div>
-                    
-                    <div id="repairSearchResultWrapper" class="pt-2 hidden">
-                        <div class="text-xs font-bold text-slate-500 mb-2">🎯 搜尋結果 (<span id="repairSearchCount">0</span>)</div>
-                        <div class="overflow-x-auto border border-slate-300 rounded-lg max-h-[400px]">
-                            <table class="w-full text-left border-collapse text-xs excel-table bg-white">
-                                <thead>
-                                    <tr>
-                                        <th class="w-24 text-center">操作</th>
-                                        <th>送修日期</th>
-                                        <th>客戶姓名</th>
-                                        <th>電話號碼</th>
-                                        <th>產品型號 (數量)</th>
-                                        <th>總項數</th>
-                                        <th>故障原因</th>
-                                        <th>更換零件</th>
-                                        <th>維修費用</th>
-                                        <th>通知取件日期</th>
-                                        <th>客戶取走日期</th>
-                                        <th>託運單號</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="repairSearchTableBody" class="repair-rows"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 最新 10 筆維修單列表 -->
-                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-3 bg-slate-800 text-white flex justify-between items-center">
-                        <h2 class="text-xs font-bold tracking-wide">📋 最新 10 筆維修資料 (雲端即時連線)</h2>
-                        <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded font-mono">總計：<span id="repairTotalCount" class="text-white font-bold">0</span> 筆</span>
-                    </div>
-                    <div class="overflow-x-auto max-h-[500px]">
-                        <table class="w-full text-left border-collapse text-xs excel-table bg-white">
-                            <thead>
-                                <tr>
-                                    <th class="w-24 text-center">操作</th>
-                                    <th>送修日期</th>
-                                    <th>客戶姓名</th>
-                                    <th>電話號碼</th>
-                                    <th>產品型號 (數量)</th>
-                                    <th>總項數</th>
-                                    <th>故障原因</th>
-                                    <th>更換零件</th>
-                                    <th>維修費用</th>
-                                    <th>通知取件日期</th>
-                                    <th>客戶取走日期</th>
-                                    <th>託運單號</th>
-                                </tr>
-                            </thead>
-                            <tbody id="repairLatestTableBody" class="repair-rows"></tbody>
-                        </table>
-                    </div>
-                    <div id="repairLatestNoDataMessage" class="hidden text-center py-12 text-slate-400 text-xs">📭 目前無維修資料。</div>
-                </section>
-            </div>
-
-            <!-- 實體大分隔線 -->
-            <hr class="border-t-4 border-dashed border-slate-300 my-8">
-
-            <!-- ==================== 【綜合管理：下半部 - ⚙️ 零件庫存管理區】 ==================== -->
-            <div class="space-y-6">
-                <div class="border-l-4 border-emerald-600 pl-3">
-                    <h2 class="text-lg font-black text-slate-800 tracking-wide">⚙️ 零件庫存管理系統區 (雲端即時同步)</h2>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">聯絡電話 *</label>
+                    <input type="tel" id="customerPhone" required class="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
-
-                <!-- 零件輸入（單行橫向） -->
-                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                        <h2 id="partFormTitle" class="text-sm font-bold text-slate-700">⚙️ 新增零件資料</h2>
-                        <button id="cancelPartEditBtn" onclick="cancelPartEdit()" class="hidden text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded-md shadow-sm font-semibold transition">取消修改</button>
-                    </div>
-                    <div class="overflow-x-auto p-5 bg-slate-50/20">
-                        <form id="partForm" class="flex items-center space-x-3 whitespace-nowrap min-w-max">
-                            <input type="hidden" id="partRecordId">
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">零件編號</label>
-                                <input type="text" id="partNo" required placeholder="編號" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">中文名稱</label>
-                                <input type="text" id="partNameZh" required placeholder="中文名" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">英文名稱</label>
-                                <input type="text" id="partNameEn" required placeholder="英文名" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">庫存數量</label>
-                                <input type="number" id="partQty" min="0" value="0" required class="w-20 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">存放櫃號</label>
-                                <input type="text" id="cabinetNo" required placeholder="櫃號" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-rose-600">成本</label>
-                                <input type="number" id="partCost" min="0" required placeholder="成本" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-emerald-700">售價</label>
-                                <input type="number" id="partPrice" min="0" required placeholder="售價" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
-                            </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <button type="submit" id="partSubmitBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]">💾 儲存零件</button>
-                        </form>
-                    </div>
-                </section>
-
-                <!-- 零件搜尋大看板 -->
-                <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b pb-3 border-slate-100">
-                        <h2 class="text-sm font-bold text-slate-700">🔍 搜尋零件庫存</h2>
-                    </div>
-
-                    <div class="flex gap-3">
-                        <input type="text" id="searchPartKeyword" placeholder="輸入關鍵字模糊搜尋..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:outline-none focus:border-emerald-500">
-                        <button onclick="clearPartSearch()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 border rounded-lg text-xs font-semibold transition">清除</button>
-                    </div>
-                    
-                    <div id="partSearchResultWrapper" class="pt-2 hidden">
-                        <div class="text-xs font-bold text-slate-500 mb-2">🎯 搜尋結果 (<span id="partSearchCount">0</span>)</div>
-                        <div class="overflow-x-auto border border-slate-300 rounded-lg max-h-[400px]">
-                            <table class="w-full text-left border-collapse bg-white text-xs excel-table">
-                                <thead>
-                                    <tr>
-                                        <th class="w-24 text-center">操作</th>
-                                        <th>零件編號</th>
-                                        <th>中文名稱</th>
-                                        <th>英文名稱</th>
-                                        <th>庫存數量</th>
-                                        <th>存放櫃號</th>
-                                        <th>成本價</th>
-                                        <th>對外售價</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="partSearchTableBody" class="part-rows"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 最新 10 筆零件列表 -->
-                <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-3 bg-slate-700 text-white flex justify-between items-center">
-                        <h2 class="text-xs font-bold tracking-wide">📋 最新 10 筆零件資料 (雲端即時連線)</h2>
-                        <span class="text-xs bg-slate-600 text-slate-300 px-2.5 py-1 rounded font-mono">總計：<span id="partTotalCount" class="text-white font-bold">0</span> 項</span>
-                    </div>
-                    <div class="overflow-x-auto max-h-[500px]">
-                        <table class="w-full text-left border-collapse text-xs excel-table bg-white">
-                            <thead>
-                                <tr>
-                                    <th class="w-24 text-center">操作</th>
-                                    <th>零件編號</th>
-                                    <th>中文名稱</th>
-                                    <th>英文名稱</th>
-                                    <th>庫存數量</th>
-                                    <th>存放櫃號</th>
-                                    <th>成本價</th>
-                                    <th>對外售價</th>
-                                </tr>
-                            </thead>
-                            <tbody id="partLatestTableBody" class="part-rows"></tbody>
-                        </table>
-                    </div>
-                    <div id="partLatestNoDataMessage" class="hidden text-center py-12 text-slate-400 text-xs">📭 目前尚無資料。</div>
-                </section>
-            </div>
-
-        </main>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">設備項目/物件種類</label>
+                    <input type="text" id="itemType" placeholder="例如：貓抓皮床底、實木餐椅" class="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">案件狀況描述</label>
+                    <textarea id="issueDescription" rows="3" placeholder="例如：邊角破損需重新包皮、更換加厚高密度海綿" class="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">目前進度狀態</label>
+                    <select id="repairStatus" class="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="待處理">🔴 待處理</option>
+                        <option value="維修中">🟡 維修中</option>
+                        <option value="已完成">🟢 已完成</option>
+                    </select>
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" id="cancelModalBtn" class="bg-gray-100 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-200">取消</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">儲存寫入雲端</button>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <!-- ==================== 核心 JavaScript 雲端同步與下載控制 ==================== -->
+    <!-- ======================================================= -->
+    <!-- ⚙️ JavaScript 核心程式控制邏輯區 -->
+    <!-- ======================================================= -->
     <script>
-        // 🌟 核心金鑰設定：包含完整的資料庫端點與專屬安全憑證
+        // 1. 📢 請於此處填入您專屬的 Firebase 配置參數
         const firebaseConfig = {
-            apiKey: "AIzaSyBe5SYF7iyhs6Tq70OpRKGS63jWkyeWvxw",
-            authDomain: "total-repair-system.firebaseapp.com",
-            databaseURL: "https://total-repair-system-default-rtdb.firebaseio.com/", 
-            projectId: "total-repair-system",
-            storageBucket: "total-repair-system.firebasestorage.app",
-            messagingSenderId: "1078906329630",
-            appId: "1:1078906329630:web:b81887dd7390c7cd53ac0f",
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
-
-        // 嚴格安全管理密碼
-        const CORRECT_PASSWORD = '10710056'; 
         
-        // 全域暫存變數
-        let repairRecords = [];
-        let partRecords = [];
-        let dbRepairRef, dbPartRef;
-        let isFirebaseInitialized = false;
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('systemPassword').focus();
-            
-            // 綁定搜尋輸入監聽
-            document.getElementById('searchPhone').addEventListener('input', function(e) {
-                doRepairSearch(e.target.value.trim());
-            });
+        let repairDataCache = {}; // 維修客戶本地快取資料
 
-            document.getElementById('searchPartKeyword').addEventListener('input', function(e) {
-                doPartSearch(e.target.value.trim());
-            });
-            
-            // 綁定密碼欄位 Enter 鍵事件
-            document.getElementById('systemPassword').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') verifyPassword();
-            });
+        // -----------------------------------------------------------
+        // 💼 [功能一] 維修客戶管理系統邏輯 (即時監聽 / 渲染 / CRUD)
+        // -----------------------------------------------------------
+        
+        // 監聽 Firebase 雲端資料庫更新
+        db.ref("repairs").on("value", (snapshot) => {
+            repairDataCache = snapshot.val() || {};
+            refreshRepairUI(repairDataCache);
+        }, (error) => {
+            console.error("Firebase 讀取失敗:", error);
+            alert("雲端連線失敗，請確認 Firebase 設定是否填寫正確。");
         });
 
-        // 初始化 Firebase 雲端資料庫並開啟「即時雙向監聽」
-        function initFirebaseAndSync() {
-            if (isFirebaseInitialized) return;
-
-            // 初始化 Google SDK (防重複載入機制)
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
-            const database = firebase.database();
+        // 刷新維修表格畫面
+        function refreshRepairUI(data, filterPhone = "") {
+            const tbody = document.getElementById("repairTableBody");
+            tbody.innerHTML = "";
             
-            // 建立雲端資料夾節點路徑
-            dbRepairRef = database.ref('repair_records');
-            dbPartRef = database.ref('part_records');
-            
-            // 🌟 核心雲端引擎：監聽維修單資料庫
-            dbRepairRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                repairRecords = [];
-                if (data) {
-                    Object.keys(data).forEach(key => {
-                        repairRecords.push({ firebaseKey: key, ...data[key] });
-                    });
-                    repairRecords.sort((a, b) => (b.id || 0) - (a.id || 0));
-                }
-                refreshRepairUI();
-                doRepairSearch(document.getElementById('searchPhone').value.trim());
-            });
+            // 轉化物件為陣列並按建立時間倒序排序
+            const records = Object.keys(data).map(key => ({ id: key, ...data[key] }))
+                .filter(item => !filterPhone || (item.phone && item.phone.includes(filterPhone)))
+                .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-            // 🌟 核心雲端引擎：監聽零件庫存資料庫
-            dbPartRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                partRecords = [];
-                if (data) {
-                    Object.keys(data).forEach(key => {
-                        partRecords.push({ firebaseKey: key, ...data[key] });
-                    });
-                    partRecords.sort((a, b) => (b.id || 0) - (a.id || 0));
-                }
-                refreshPartUI();
-                doPartSearch(document.getElementById('searchPartKeyword').value.trim());
-            });
-
-            isFirebaseInitialized = true;
-        }
-
-        function verifyPassword() {
-            const inputPass = document.getElementById('systemPassword').value;
-            const overlay = document.getElementById('loginOverlay');
-            const mainContent = document.getElementById('mainContent');
-
-            if (inputPass === CORRECT_PASSWORD) {
-                overlay.classList.add('hidden');
-                mainContent.classList.remove('hidden', 'opacity-0');
-                mainContent.classList.add('opacity-100');
-                
-                // 修正處：直接安全的初始化表單日期
-                const dateInput = document.getElementById('receivedDate');
-                if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-                
-                initFirebaseAndSync();
-            } else {
-                alert('密碼錯誤！');
-                document.getElementById('systemPassword').value = '';
-                document.getElementById('systemPassword').focus();
-            }
-        }
-
-        function lockSystem() {
-            repairRecords = [];
-            partRecords = [];
-            
-            document.getElementById('repairLatestTableBody').innerHTML = '';
-            document.getElementById('repairSearchTableBody').innerHTML = '';
-            document.getElementById('partLatestTableBody').innerHTML = '';
-            document.getElementById('partSearchTableBody').innerHTML = '';
-            
-            document.getElementById('repairSearchResultWrapper').classList.add('hidden');
-            document.getElementById('partSearchResultWrapper').classList.add('hidden');
-            document.getElementById('repairForm').reset();
-            document.getElementById('partForm').reset();
-            document.getElementById('searchPhone').value = '';
-            document.getElementById('searchPartKeyword').value = '';
-            resetProductFields();
-
-            document.getElementById('systemPassword').value = '';
-            
-            const overlay = document.getElementById('loginOverlay');
-            const mainContent = document.getElementById('mainContent');
-            
-            overlay.classList.remove('hidden');
-            mainContent.classList.add('hidden', 'opacity-0');
-            
-            if (dbRepairRef) dbRepairRef.off();
-            if (dbPartRef) dbPartRef.off();
-            isFirebaseInitialized = false;
-        }
-
-        // ==================== 💼 [模組一] 維修客戶管理雲端資料控制 ====================
-        
-        function addProductField() {
-            const container = document.getElementById('productFieldsContainer');
-            const group = document.createElement('div');
-            group.className = 'product-group flex items-center space-x-2 border-l-2 border-blue-300 pl-2 ml-2';
-            group.innerHTML = `
-                <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                <button type="button" onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-700 font-bold px-1">✕</button>
-            `;
-            container.appendChild(group);
-        }
-
-        function resetProductFields() {
-            const container = document.getElementById('productFieldsContainer');
-            container.innerHTML = `
-                <div class="product-group flex items-center space-x-2">
-                    <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                    <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                </div>
-            `;
-        }
-
-        document.getElementById('repairForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const recordId = document.getElementById('repairRecordId').value;
-            const rawCost = document.getElementById('repairCost').value;
-            
-            const modelInputs = document.getElementsByClassName('product-model-input');
-            const qtyInputs = document.getElementsByClassName('product-qty-input');
-            let productList = [];
-            
-            for (let i = 0; i < modelInputs.length; i++) {
-                const mVal = modelInputs[i].value.trim();
-                const qVal = qtyInputs[i].value;
-                if (mVal) productList.push(`${mVal} (${qVal}件)`);
-            }
-            const combinedProducts = productList.join(' / ');
-
-            const formData = {
-                receivedDate: document.getElementById('receivedDate').value,
-                customerName: document.getElementById('customerName').value.trim(),
-                customerPhone: document.getElementById('customerPhone').value.trim(),
-                productModel: combinedProducts,
-                quantity: modelInputs.length,  
-                issueReason: document.getElementById('issueReason').value.trim(),
-                replacedParts: document.getElementById('replacedParts').value.trim() || '無',
-                repairCost: rawCost !== '' ? Number(rawCost) : null,
-                pickupDate: document.getElementById('pickupDate').value || '未通知',
-                customerPickupDate: document.getElementById('customerPickupDate').value || '未取走',
-                shippingNo: document.getElementById('shippingNo').value.trim() || '無'
-            };
-
-            if (recordId) {
-                const targetRecord = repairRecords.find(r => r.id == recordId);
-                if (targetRecord && targetRecord.firebaseKey) {
-                    formData.id = Number(recordId);
-                    firebase.database().ref('repair_records/' + targetRecord.firebaseKey).set(formData)
-                        .then(() => {
-                            alert('雲端更新成功');
-                            cancelRepairEdit();
-                        });
-                }
-            } else {
-                formData.id = Date.now();
-                dbRepairRef.push(formData).then(() => {
-                    alert('雲端儲存成功');
-                    document.getElementById('repairForm').reset();
-                    const dateInput = document.getElementById('receivedDate');
-                    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-                    resetProductFields();
-                });
-            }
-        });
-
-        function refreshRepairUI() {
-            document.getElementById('repairTotalCount').innerText = repairRecords.length;
-            const latest10 = repairRecords.slice(0, 10);
-            
-            const tbody = document.getElementById('repairLatestTableBody');
-            tbody.innerHTML = '';
-            
-            if (latest10.length === 0) {
-                document.getElementById('repairLatestNoDataMessage').classList.remove('hidden');
-            } else {
-                document.getElementById('repairLatestNoDataMessage').classList.add('hidden');
-                latest10.forEach(record => {
-                    tbody.appendChild(createRepairRow(record));
-                });
-            }
-        }
-
-        function createRepairRow(record) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="text-center space-x-1">
-                    <button onclick="editRepairRecord('${record.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-xs">改</button>
-                    <button onclick="deleteRepairRecord('${record.firebaseKey}')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-0.5 rounded text-xs">刪</button>
-                </td>
-                <td>${record.receivedDate || ''}</td>
-                <td class="font-bold">${record.customerName || ''}</td>
-                <td class="font-mono">${record.customerPhone || ''}</td>
-                <td class="text-blue-700 font-medium">${record.productModel || ''}</td>
-                <td class="text-center">${record.quantity || 1}</td>
-                <td class="text-rose-600">${record.issueReason || ''}</td>
-                <td>${record.replacedParts || '無'}</td>
-                <td class="font-bold text-right">${record.repairCost !== null && record.repairCost !== undefined ? '$' + record.repairCost : '-'}</td>
-                <td>${record.pickupDate || '未通知'}</td>
-                <td class="text-blue-600">${record.customerPickupDate || '未取走'}</td>
-                <td class="font-mono">${record.shippingNo || '無'}</td>
-            `;
-            return tr;
-        }
-
-        function editRepairRecord(id) {
-            const record = repairRecords.find(r => r.id == id);
-            if (!record) return;
-
-            document.getElementById('repairRecordId').value = record.id;
-            document.getElementById('receivedDate').value = record.receivedDate;
-            document.getElementById('customerName').value = record.customerName;
-            document.getElementById('customerPhone').value = record.customerPhone;
-            document.getElementById('issueReason').value = record.issueReason;
-            document.getElementById('replacedParts').value = record.replacedParts === '無' ? '' : record.replacedParts;
-            document.getElementById('repairCost').value = record.repairCost !== null ? record.repairCost : '';
-            document.getElementById('pickupDate').value = record.pickupDate === '未通知' ? '' : record.pickupDate;
-            document.getElementById('customerPickupDate').value = record.customerPickupDate === '未取走' ? '' : record.customerPickupDate;
-            document.getElementById('shippingNo').value = record.shippingNo === '無' ? '' : record.shippingNo;
-
-            // 還原產品型號多重欄位
-            const container = document.getElementById('productFieldsContainer');
-            container.innerHTML = '';
-            
-            if (record.productModel) {
-                const parts = record.productModel.split(' / ');
-                parts.forEach((part, index) => {
-                    const match = part.match(/(.*)\s\((\d+)件\)/);
-                    let model = part;
-                    let qty = 1;
-                    if (match) {
-                        model = match[1];
-                        qty = match[2];
-                    }
-                    
-                    const group = document.createElement('div');
-                    group.className = 'product-group flex items-center space-x-2' + (index > 0 ? ' border-l-2 border-blue-300 pl-2 ml-2' : '');
-                    group.innerHTML = `
-                        <input type="text" value="${model}" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
-                        <input type="number" value="${qty}" min="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
-                        ${index > 0 ? `<button type="button" onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-700 font-bold px-1">✕</button>` : ''}
-                    `;
-                    container.appendChild(group);
-                });
-            } else {
-                resetProductFields();
-            }
-
-            document.getElementById('repairFormTitle').innerText = '✏️ 正在修改維修單';
-            document.getElementById('repairSubmitBtn').innerText = '💾 更新維修單';
-            document.getElementById('cancelRepairEditBtn').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function cancelRepairEdit() {
-            document.getElementById('repairRecordId').value = '';
-            document.getElementById('repairForm').reset();
-            const dateInput = document.getElementById('receivedDate');
-            if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-            resetProductFields();
-            document.getElementById('repairFormTitle').innerText = '📝 建立新維修單';
-            document.getElementById('repairSubmitBtn').innerText = '💾 儲存維修單';
-            document.getElementById('cancelRepairEditBtn').classList.add('hidden');
-        }
-
-        function deleteRepairRecord(firebaseKey) {
-            if (confirm('確定要永久刪除此筆雲端維修紀錄嗎？')) {
-                firebase.database().ref('repair_records/' + firebaseKey).remove()
-                    .then(() => alert('資料已自雲端移除'));
-            }
-        }
-
-        function doRepairSearch(phoneKeyword) {
-            const wrapper = document.getElementById('repairSearchResultWrapper');
-            const tbody = document.getElementById('repairSearchTableBody');
-            
-            tbody.innerHTML = '';
-            if (!phoneKeyword) {
-                wrapper.classList.add('hidden');
+            if (records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-gray-400">🔍 找不到對應的維修客戶紀錄</td></tr>`;
                 return;
             }
 
-            const results = repairRecords.filter(r => r.customerPhone && r.customerPhone.includes(phoneKeyword));
-            document.getElementById('repairSearchCount').innerText = results.length;
-            
-            if (results.length === 0) {
-                wrapper.classList.add('hidden');
-            } else {
-                wrapper.classList.remove('hidden');
-                results.forEach(record => {
-                    tbody.appendChild(createRepairRow(record));
-                });
-            }
+            // 若沒有進行搜尋，預設只截取最前面的 10 筆，避免歷史死資料撐爆畫面
+            const displayRecords = filterPhone ? records : records.slice(0, 10);
+
+            displayRecords.forEach(item => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-gray-50 border-b";
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-medium text-gray-900">${item.customerName || '-'}</td>
+                    <td class="px-4 py-3 text-gray-600">${item.phone || '-'}</td>
+                    <td class="px-4 py-3 text-gray-600">${item.itemType || '-'}</td>
+                    <td class="px-4 py-3 text-gray-500 max-w-xs truncate" title="${item.issueDescription || ''}">${item.issueDescription || '-'}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2.5 py-1 text-xs font-semibold rounded-full ${getStatusStyle(item.status)}">
+                            ${item.status || '待處理'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-xs text-gray-400">${formatDate(item.createdAt)}</td>
+                    <td class="px-4 py-3 text-right font-medium space-x-2">
+                        <button onclick="editRepair('${item.id}')" class="text-blue-600 hover:text-blue-900">修改</button>
+                        <button onclick="deleteRepair('${item.id}')" class="text-red-600 hover:text-red-900">刪除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
-        function clearRepairSearch() {
-            document.getElementById('searchPhone').value = '';
-            doRepairSearch('');
-        }
-
-        // ==================== ⚙️ [模組二] 零件庫存管理雲端資料控制 ====================
-        
-        document.getElementById('partForm').addEventListener('submit', function(e) {
+        // 客戶表單提交事件 (相容 新增與編輯)
+        document.getElementById("repairForm").addEventListener("submit", function(e) {
             e.preventDefault();
-            const recordId = document.getElementById('partRecordId').value;
+            const id = document.getElementById("repairId").value;
+            const now = new Date().toISOString();
             
-            const formData = {
-                partNo: document.getElementById('partNo').value.trim(),
-                partNameZh: document.getElementById('partNameZh').value.trim(),
-                partNameEn: document.getElementById('partNameEn').value.trim(),
-                partQty: Number(document.getElementById('partQty').value),
-                cabinetNo: document.getElementById('cabinetNo').value.trim(),
-                partCost: Number(document.getElementById('partCost').value),
-                partPrice: Number(document.getElementById('partPrice').value)
+            const payload = {
+                customerName: document.getElementById("customerName").value.trim(),
+                phone: document.getElementById("customerPhone").value.trim(),
+                itemType: document.getElementById("itemType").value.trim(),
+                issueDescription: document.getElementById("issueDescription").value.trim(),
+                status: document.getElementById("repairStatus").value,
+                updatedAt: now
             };
 
-            if (recordId) {
-                const targetRecord = partRecords.find(p => p.id == recordId);
-                if (targetRecord && targetRecord.firebaseKey) {
-                    formData.id = Number(recordId);
-                    firebase.database().ref('part_records/' + targetRecord.firebaseKey).set(formData)
-                        .then(() => {
-                            alert('零件雲端更新成功');
-                            cancelPartEdit();
-                        });
-                }
+            if (id) {
+                // 編輯模式
+                db.ref(`repairs/${id}`).update(payload)
+                    .then(() => { closeRepairModal(); })
+                    .catch(err => alert("修改資料發生錯誤：" + err.message));
             } else {
-                formData.id = Date.now();
-                dbPartRef.push(formData).then(() => {
-                    alert('零件雲端新增成功');
-                    document.getElementById('partForm').reset();
-                    document.getElementById('partQty').value = '0';
-                });
+                // 全新新增模式
+                payload.createdAt = now;
+                db.ref("repairs").push(payload)
+                    .then(() => { closeRepairModal(); })
+                    .catch(err => alert("上傳雲端發生錯誤：" + err.message));
             }
         });
 
-        function refreshPartUI() {
-            document.getElementById('partTotalCount').innerText = partRecords.length;
-            const latest10 = partRecords.slice(0, 10);
-            
-            const tbody = document.getElementById('partLatestTableBody');
-            tbody.innerHTML = '';
-            
-            if (latest10.length === 0) {
-                document.getElementById('partLatestNoDataMessage').classList.remove('hidden');
-            } else {
-                document.getElementById('partLatestNoDataMessage').classList.add('hidden');
-                latest10.forEach(record => {
-                    tbody.appendChild(createPartRow(record));
-                });
+        // 啟動關鍵字模糊搜尋
+        document.getElementById("searchPhone").addEventListener("input", function(e) {
+            refreshRepairUI(repairDataCache, e.target.value.trim());
+        });
+
+        // 刪除維修數據
+        function deleteRepair(id) {
+            if (confirm("⚠️ 注意！您確定要徹底刪除此筆客戶維修紀錄嗎？")) {
+                db.ref(`repairs/${id}`).remove().catch(err => alert("刪除失敗: " + err.message));
             }
         }
 
-        function createPartRow(record) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="text-center space-x-1">
-                    <button onclick="editPartRecord('${record.id}')" class="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-0.5 rounded text-xs">改</button>
-                    <button onclick="deletePartRecord('${record.firebaseKey}')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-0.5 rounded text-xs">刪</button>
-                </td>
-                <td class="font-mono font-bold">${record.partNo || ''}</td>
-                <td class="text-emerald-800 font-medium">${record.partNameZh || ''}</td>
-                <td class="font-mono text-slate-500">${record.partNameEn || ''}</td>
-                <td class="font-bold text-center ${record.partQty <= 3 ? 'text-rose-600 bg-rose-50' : ''}">${record.partQty || 0}</td>
-                <td class="font-mono text-center">${record.cabinetNo || ''}</td>
-                <td class="text-right text-rose-600">$${record.partCost || 0}</td>
-                <td class="text-right text-emerald-600 font-bold">$${record.partPrice || 0}</td>
-            `;
-            return tr;
-        }
-
-        function editPartRecord(id) {
-            const record = partRecords.find(p => p.id == id);
-            if (!record) return;
-
-            document.getElementById('partRecordId').value = record.id;
-            document.getElementById('partNo').value = record.partNo;
-            document.getElementById('partNameZh').value = record.partNameZh;
-            document.getElementById('partNameEn').value = record.partNameEn;
-            document.getElementById('partQty').value = record.partQty;
-            document.getElementById('cabinetNo').value = record.cabinetNo;
-            document.getElementById('partCost').value = record.partCost;
-            document.getElementById('partPrice').value = record.partPrice;
-
-            document.getElementById('partFormTitle').innerText = '✏️ 正在修改零件資料';
-            document.getElementById('partSubmitBtn').innerText = '💾 更新零件';
-            document.getElementById('cancelPartEditBtn').classList.remove('hidden');
+        // 開啟編輯表單
+        function editRepair(id) {
+            const item = repairDataCache[id];
+            if (!item) return;
+            document.getElementById("repairId").value = id;
+            document.getElementById("customerName").value = item.customerName || "";
+            document.getElementById("customerPhone").value = item.phone || "";
+            document.getElementById("itemType").value = item.itemType || "";
+            document.getElementById("issueDescription").value = item.issueDescription || "";
+            document.getElementById("repairStatus").value = item.status || "待處理";
             
-            document.getElementById('partFormTitle').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById("modalTitle").innerText = "🔧 變更修改維修紀錄";
+            document.getElementById("repairModal").classList.remove("hidden");
         }
 
-        function cancelPartEdit() {
-            document.getElementById('partRecordId').value = '';
-            document.getElementById('partForm').reset();
-            document.getElementById('partQty').value = '0';
-            document.getElementById('partFormTitle').innerText = '⚙️ 新增零件資料';
-            document.getElementById('partSubmitBtn').innerText = '💾 儲存零件';
-            document.getElementById('cancelPartEditBtn').classList.add('hidden');
-        }
-
-        function deletePartRecord(firebaseKey) {
-            if (confirm('確定要永久刪除此筆零件庫存嗎？')) {
-                firebase.database().ref('part_records/' + firebaseKey).remove()
-                    .then(() => alert('零件已自雲端移除'));
-            }
-        }
-
-        function doPartSearch(keyword) {
-            const wrapper = document.getElementById('partSearchResultWrapper');
-            const tbody = document.getElementById('partSearchTableBody');
-            
-            tbody.innerHTML = '';
-            if (!keyword) {
-                wrapper.classList.add('hidden');
+        // -----------------------------------------------------------
+        // 📊 [功能二] 🟢 核心擴充：Excel 規格 CSV 檔案雙向匯出與匯入
+        // -----------------------------------------------------------
+        
+        // 一鍵備份匯出功能 (特別追加 Excel 補丁，防止繁體中文發生亂碼)
+        document.getElementById("exportRepairBtn").addEventListener("click", () => {
+            const keys = Object.keys(repairDataCache);
+            if (keys.length === 0) {
+                alert("目前雲端無資料可以執行匯出備份。");
                 return;
             }
+            
+            let csvText = "客戶姓名,電話,設備項目,進度狀態,狀況描述,建立時間\n";
+            keys.forEach(key => {
+                const item = repairDataCache[key];
+                const row = [
+                    `"${(item.customerName || '').replace(/"/g, '""')}"`,
+                    `"${(item.phone || '').replace(/"/g, '""')}"`,
+                    `"${(item.itemType || '').replace(/"/g, '""')}"`,
+                    `"${(item.status || '待處理')}"`,
+                    `"${(item.issueDescription || '').replace(/"/g, '""')}"`,
+                    `"${formatDate(item.createdAt)}"`
+                ];
+                csvText += row.join(",") + "\n";
+            });
 
-            const lowerKey = keyword.toLowerCase();
-            const results = partRecords.filter(p => 
-                (p.partNo && p.partNo.toLowerCase().includes(lowerKey)) ||
-                (p.partNameZh && p.partNameZh.toLowerCase().includes(lowerKey)) ||
-                (p.partNameEn && p.partNameEn.toLowerCase().includes(lowerKey)) ||
-                (p.cabinetNo && p.cabinetNo.toLowerCase().includes(lowerKey))
-            );
-
-            document.getElementById('partSearchCount').innerText = results.length;
-
-            if (results.length === 0) {
-                wrapper.classList.add('hidden');
-            } else {
-                wrapper.classList.remove('hidden');
-                results.forEach(record => {
-                    tbody.appendChild(createPartRow(record));
-                });
-            }
-        }
-
-        function clearPartSearch() {
-            document.getElementById('searchPartKeyword').value = '';
-            doPartSearch('');
-        }
-
-        // ==================== 📊 [模組三] 全域 CSV 資料匯出引擎 ====================
-        
-        function downloadCSV(csvContent, fileName) {
-            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            // 加上 \ufeff (BOM 字頭)，確保微軟 Excel 直接按兩下開啟時，繁體中文與電話能完美辨識不亂碼
+            const blob = new Blob(["\ufeff" + csvText], { type: "text/csv;charset=utf-8;" });
             const link = document.createElement("a");
-            if (link.download !== undefined) {
-                const url = URL.createObjectURL(blob);
-                link.setAttribute("href", url);
-                link.setAttribute("download", fileName);
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+            link.href = URL.createObjectURL(blob);
+            link.download = `維修大師資料備份_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // 點擊觸發檔案選取視窗
+        document.getElementById("importRepairBtn").addEventListener("click", () => {
+            document.getElementById("importRepairInput").click();
+        });
+
+        // 檔案匯入核心解析邏輯
+        document.getElementById("importRepairInput").addEventListener("change", function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const content = evt.target.result;
+                const rows = content.split(/\r?\n/);
+                if (rows.length <= 1) {
+                    alert("匯入失敗：選取的檔案內部無任何有效資料。");
+                    return;
+                }
+
+                const batchUpdates = {};
+                const nowTimestamp = new Date().toISOString();
+                let loadedCount = 0;
+
+                // 從第二行 (i=1) 開始跑迴圈，主動跳過 Excel 的第一列中文標頭
+                for (let i = 1; i < rows.length; i++) {
+                    const currentRow = rows[i].trim();
+                    if (!currentRow) continue; // 略過空白列
+
+                    // 切分 CSV 欄位（移除頭尾雙引號）
+                    const cols = currentRow.split(",").map(cell => cell.replace(/^"|"$/g, '').trim());
+                    
+                    // 檢查基本門檻：前兩個關鍵欄位(姓名、電話)不能是空值
+                    if (!cols[0] || !cols[1]) {
+                        console.warn(`第 ${i+1} 行欄位格式不齊全，已自動跳過。`);
+                        continue;
+                    }
+
+                    // 動態向 Firebase 預取一組不重複的專屬加密 Key
+                    const newFirebaseKey = db.ref().child('repairs').push().key;
+
+                    // 映射配置成系統標準的物件資料
+                    batchUpdates[`/repairs/${newFirebaseKey}`] = {
+                        customerName: cols[0],
+                        phone: cols[1],
+                        itemType: cols[2] || "通用項目",
+                        status: cols[3] || "待處理",
+                        issueDescription: cols[4] || "無細部描述",
+                        createdAt: nowTimestamp,
+                        updatedAt: nowTimestamp
+                    };
+                    loadedCount++;
+                }
+
+                if (loadedCount > 0) {
+                    if (confirm(`🔍 偵測完畢！確認要整批匯入這 ${loadedCount} 筆客戶歷史資料至雲端資料庫嗎？`)) {
+                        db.ref().update(batchUpdates)
+                            .then(() => {
+                                alert(`🎉 恭喜！已成功匯入 ${loadedCount} 筆維修案至雲端系統。`);
+                                document.getElementById("importRepairInput").value = ""; // 清除選擇器快取
+                            })
+                            .catch(err => alert("寫入雲端失敗: " + err.message));
+                    }
+                } else {
+                    alert("沒有找到任何符合格式的資料行，請確認欄位配置順序。");
+                }
+            };
+
+            // 使用網頁通用繁體中文編碼讀取
+            reader.readAsText(file, "UTF-8");
+        });
+
+
+        // -----------------------------------------------------------
+        // 🔧 [功能三] 零件與耗材庫存變更模組邏輯
+        // -----------------------------------------------------------
+        
+        // 監聽零件資料庫變更
+        db.ref("parts").on("value", (snapshot) => {
+            const partsData = snapshot.val() || {};
+            refreshPartUI(partsData);
+        });
+
+        // 提交零件表單 (新增 / 變更庫存數)
+        document.getElementById("partForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const id = document.getElementById("partId").value;
+            const payload = {
+                partName: document.getElementById("partName").value.trim(),
+                stock: parseInt(document.getElementById("partStock").value) || 0,
+                minRequired: parseInt(document.getElementById("partMin").value) || 0
+            };
+
+            if (id) {
+                db.ref(`parts/${id}`).update(payload).then(() => resetPartForm());
+            } else {
+                db.ref("parts").push(payload).then(() => resetPartForm());
+            }
+        });
+
+        // 渲染零件小卡列表
+        function refreshPartUI(data) {
+            const container = document.getElementById("partsContainer");
+            container.innerHTML = "";
+            const keys = Object.keys(data);
+
+            if (keys.length === 0) {
+                container.innerHTML = `<p class="text-center text-sm text-gray-400 py-4">目前尚無零件庫存清單</p>`;
+                return;
+            }
+
+            keys.forEach(key => {
+                const item = data[key];
+                const isLowStock = item.stock <= item.minRequired; // 判斷是否低於安全水位
+                
+                const div = document.createElement("div");
+                div.className = `p-3 rounded-lg border text-sm flex items-center justify-between transition ${isLowStock ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`;
+                div.innerHTML = `
+                    <div>
+                        <div class="font-semibold text-gray-900">${item.partName || '未命名耗材'}</div>
+                        <div class="text-xs text-gray-500 mt-0.5">
+                            目前庫存：<span class="font-bold ${isLowStock ? 'text-red-600 text-base' : 'text-gray-700'}">${item.stock}</span> 
+                            (安全水位: ${item.minRequired})
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="quickAdjustStock('${key}', 1)" class="bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded font-bold text-xs">+1</button>
+                        <button onclick="quickAdjustStock('${key}', -1)" class="bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded font-bold text-xs">-1</button>
+                        <button onclick="editPart('${key}')" class="text-indigo-600 hover:text-indigo-900 ml-2 text-xs">改</button>
+                        <button onclick="deletePart('${key}')" class="text-red-500 hover:text-red-800 text-xs">✕</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // 快速微調庫存 (+1 / -1 按鈕)
+        function quickAdjustStock(id, change) {
+            const node = db.ref(`parts/${id}/stock`);
+            node.transaction((currentStock) => {
+                return Math.max(0, (currentStock || 0) + change);
+            });
+        }
+
+        function editPart(id) {
+            db.ref(`parts/${id}`).once("value", (snap) => {
+                const item = snap.val();
+                if (!item) return;
+                document.getElementById("partId").value = id;
+                document.getElementById("partName").value = item.partName || "";
+                document.getElementById("partStock").value = item.stock || 0;
+                document.getElementById("partMin").value = item.minRequired || 0;
+                document.getElementById("partSubmitBtn").innerText = "🔄 確定修改零件規格";
+                document.getElementById("cancelPartEditBtn").classList.remove("hidden");
+            });
+        }
+
+        function deletePart(id) {
+            if (confirm("確定要將此零件項目從庫存清單中移除嗎？")) {
+                db.ref(`parts/${id}`).remove();
             }
         }
 
-        function exportRepairToCSV() {
-            if (repairRecords.length === 0) {
-                alert('目前沒有維修資料可供匯出！');
-                return;
+        function resetPartForm() {
+            document.getElementById("partForm").reset();
+            document.getElementById("partId").value = "";
+            document.getElementById("partSubmitBtn").innerText = "💾 儲存並更新庫存";
+            document.getElementById("cancelPartEditBtn").classList.add("hidden");
+        }
+        document.getElementById("cancelPartEditBtn").addEventListener("click", resetPartForm);
+
+
+        // -----------------------------------------------------------
+        // 🧱 [功能四] 基礎通用工具輔助函式
+        // -----------------------------------------------------------
+        function getStatusStyle(status) {
+            switch(status) {
+                case "已完成": return "bg-green-100 text-green-800";
+                case "維修中": return "bg-yellow-100 text-yellow-800";
+                default: return "bg-red-100 text-red-800"; // 待處理
             }
-            let csv = '送修日期,客戶姓名,電話號碼,產品型號(數量),總項數,故障原因,更換零件,維修費用,通知取件日期,客戶取走日期,託運單號\n';
-            repairRecords.forEach(r => {
-                csv += `"${r.receivedDate || ''}","${r.customerName || ''}","${r.customerPhone || ''}","${(r.productModel || '').replace(/"/g, '""')}","${r.quantity || 1}","${(r.issueReason || '').replace(/"/g, '""')}","${(r.replacedParts || '').replace(/"/g, '""')}","${r.repairCost !== null ? r.repairCost : ''}","${r.pickupDate || ''}","${r.customerPickupDate || ''}","${r.shippingNo || ''}"\n`;
-            });
-            downloadCSV(csv, `維修單資料匯出_${new Date().toISOString().split('T')[0]}.csv`);
         }
 
-        function exportPartToCSV() {
-            if (partRecords.length === 0) {
-                alert('目前沒有零件資料可供匯出！');
-                return;
-            }
-            let csv = '零件編號,中文名稱,英文名稱,庫存數量,存放櫃號,成本價,對外售價\n';
-            partRecords.forEach(p => {
-                csv += `"${p.partNo || ''}","${(p.partNameZh || '').replace(/"/g, '""')}","${(p.partNameEn || '').replace(/"/g, '""')}","${p.partQty || 0}","${p.cabinetNo || ''}","${p.partCost || 0}","${p.partPrice || 0}"\n`;
-            });
-            downloadCSV(csv, `零件庫存資料匯出_${new Date().toISOString().split('T')[0]}.csv`);
+        function formatDate(isoString) {
+            if (!isoString) return "-";
+            try {
+                const d = new Date(isoString);
+                return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            } catch(e) { return "-"; }
         }
+
+        function closeRepairModal() {
+            document.getElementById("repairModal").classList.add("hidden");
+            document.getElementById("repairForm").reset();
+            document.getElementById("repairId").value = "";
+        }
+
+        document.getElementById("openAddModalBtn").addEventListener("click", () => {
+            document.getElementById("modalTitle").innerText = "➕ 新增客戶維修紀錄";
+            document.getElementById("repairForm").reset();
+            document.getElementById("repairId").value = "";
+            document.getElementById("repairModal").classList.remove("hidden");
+        });
+        document.getElementById("closeModalBtn").addEventListener("click", closeRepairModal);
+        document.getElementById("cancelModalBtn").addEventListener("click", closeRepairModal);
     </script>
 </body>
 </html>
