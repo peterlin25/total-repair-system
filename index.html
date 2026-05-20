@@ -3,47 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>維修與零件管理系統 (Excel 匯出版)</title>
+    <title>管理系統</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://tailwindcss.com"></script>
-    <!-- 引入 SheetJS Excel 解析與匯出核心套件 -->
+    <!-- 引入 SheetJS -->
     <script src="https://jsdelivr.net"></script>
     <style>
-        /* 嚴格模擬標準 Excel 儲存格與灰白交織紋理 */
         .excel-table th, .excel-table td {
-            border: 1px solid #cbd5e1; /* slate-300 */
+            border: 1px solid #cbd5e1;
             padding: 10px 14px;
             white-space: nowrap;
         }
         .excel-table th {
-            background-color: #f1f5f9; /* slate-100 */
+            background-color: #f1f5f9;
             font-weight: bold;
-            color: #1e293b; /* slate-800 */
+            color: #1e293b;
             position: sticky;
             top: 0;
             z-index: 10;
         }
         .excel-table tbody tr:nth-child(even) {
-            background-color: #f8fafc; /* slate-50 */
+            background-color: #f8fafc;
         }
         .excel-table tbody tr:hover {
-            background-color: #f1f5f9; /* slate-100 */
+            background-color: #f1f5f9;
         }
     </style>
 </head>
 <body class="bg-slate-50 font-sans antialiased pb-24 text-slate-800">
 
-    <!-- ==================== 密碼驗證遮罩層 ==================== -->
+    <!-- ==================== 密碼驗證遮罩層 (已移除錯誤文字) ==================== -->
     <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-4">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-6 border border-slate-100">
             <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-2xl mx-auto shadow-sm">🔒</div>
-            <div class="space-y-2">
-                <h2 class="text-xl font-bold text-slate-800">安全防護鎖</h2>
-                <p class="text-sm text-slate-400">請輸入管理密碼以解鎖系統面板</p>
-            </div>
+            <h2 class="text-xl font-bold text-slate-800">安全防護鎖</h2>
             <div class="space-y-3">
                 <input type="password" id="systemPassword" placeholder="請輸入密碼" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-center text-lg font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none tracking-widest">
-                <p id="loginError" class="text-xs text-rose-500 font-semibold hidden">❌ 密碼錯誤，請重新輸入</p>
             </div>
             <button onclick="verifyPassword()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition shadow-sm tracking-wide">
                 解鎖系統
@@ -54,29 +49,27 @@
     <!-- ==================== 核心系統網頁內容 ==================== -->
     <div id="mainContent" class="hidden opacity-0 transition-opacity duration-300">
         
-        <!-- 頂部導覽列：加載了一鍵資料備份與 Excel 匯出控制按鈕 -->
+        <!-- 頂部導覽列 -->
         <header class="bg-slate-900 text-white shadow-sm sticky top-0 z-50">
             <div class="max-w-[95%] mx-auto px-6 py-4 flex justify-between items-center flex-wrap gap-4">
-                <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">🔧 <span>維修與零件管理系統</span></h1>
+                <h1 class="text-xl font-bold tracking-wider">🔧 維修與零件管理系統</h1>
                 
                 <div class="flex items-center flex-wrap gap-3">
-                    <!-- 系統分頁切換 -->
                     <div class="bg-slate-800 p-1 rounded-lg border border-slate-700 flex space-x-1">
                         <button id="tabRepairBtn" onclick="switchTab('repair')" class="px-4 py-1.5 rounded-md text-xs font-bold transition bg-blue-600 text-white">💼 維修客戶管理</button>
                         <button id="tabPartBtn" onclick="switchTab('part')" class="px-4 py-1.5 rounded-md text-xs font-bold transition text-slate-400 hover:text-white">⚙️ 零件庫存管理</button>
                     </div>
 
-                    <!-- 📊 核心升級功能：Excel 一鍵導出按鈕組 -->
                     <div class="flex space-x-2">
-                        <button onclick="exportRepairToExcel()" class="bg-blue-700 hover:bg-blue-800 text-white border border-blue-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition flex items-center gap-1">
-                            📊 匯出維修單 Excel
+                        <button onclick="exportRepairToExcel()" class="bg-blue-700 hover:bg-blue-800 text-white border border-blue-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
+                            📊 匯出維修單
                         </button>
-                        <button onclick="exportPartToExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition flex items-center gap-1">
-                            📊 匯出零件庫 Excel
+                        <button onclick="exportPartToExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
+                            📊 匯出零件庫
                         </button>
                     </div>
 
-                    <button onclick="lockSystem()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md font-medium border border-slate-700 transition">🔒 安全登出</button>
+                    <button onclick="lockSystem()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md font-medium border border-slate-700 transition">🔒 登出</button>
                 </div>
             </div>
         </header>
@@ -88,7 +81,7 @@
             <div id="sectionRepair" class="space-y-8">
                 <!-- 維修單輸入（單行橫向） -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                    <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                         <h2 id="repairFormTitle" class="text-sm font-bold text-slate-700">📝 建立新維修單</h2>
                         <button id="cancelRepairEditBtn" onclick="cancelRepairEdit()" class="hidden text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded-md shadow-sm font-semibold transition">取消修改</button>
                     </div>
@@ -96,43 +89,43 @@
                         <form id="repairForm" class="flex items-center space-x-3 whitespace-nowrap min-w-max">
                             <input type="hidden" id="repairRecordId">
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">送修日期*</label>
+                                <label class="text-xs font-bold text-slate-500">送修日期</label>
                                 <input type="date" id="receivedDate" required class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">客戶姓名*</label>
+                                <label class="text-xs font-bold text-slate-500">客戶姓名</label>
                                 <input type="text" id="customerName" required placeholder="姓名" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">電話號碼*</label>
-                                <input type="tel" id="customerPhone" required placeholder="09xxxxxxxx" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500">
+                                <label class="text-xs font-bold text-slate-500">電話號碼</label>
+                                <input type="tel" id="customerPhone" required placeholder="電話" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">產品型號*</label>
+                                <label class="text-xs font-bold text-slate-500">產品型號</label>
                                 <input type="text" id="productModel" required placeholder="型號" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">數量*</label>
+                                <label class="text-xs font-bold text-slate-500">數量</label>
                                 <input type="number" id="quantity" min="1" value="1" required class="w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-rose-600">故障原因*</label>
-                                <input type="text" id="issueReason" required placeholder="描述故障狀況..." class="w-48 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                                <label class="text-xs font-bold text-rose-600">故障原因</label>
+                                <input type="text" id="issueReason" required placeholder="原因" class="w-48 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-emerald-700">更換零件</label>
-                                <input type="text" id="replacedParts" placeholder="無則填無" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                                <input type="text" id="replacedParts" placeholder="零件" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-slate-500">維修費用</label>
-                                <input type="number" id="repairCost" min="0" placeholder="留白為尚未報價" class="w-28 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                                <input type="number" id="repairCost" min="0" placeholder="費用" class="w-28 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
@@ -142,29 +135,29 @@
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-slate-500">託運單號</label>
-                                <input type="text" id="shippingNo" placeholder="物流單號" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500">
+                                <input type="text" id="shippingNo" placeholder="單號" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <button type="submit" id="repairSubmitBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]">💾 儲存資料</button>
+                            <button type="submit" id="repairSubmitBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]">💾 儲存</button>
                         </form>
                     </div>
                 </section>
 
-                <!-- 維修電話搜尋大看板 -->
-                <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-                    <h2 class="text-sm font-bold text-slate-700">🔍 快速搜尋客戶電話與資料修改</h2>
+                <!-- 維修電話搜尋大看板 (已加註：以電話號碼搜尋) -->
+                <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-3">
+                    <div class="text-xs font-bold text-slate-400 select-none tracking-wider">〔以電話號碼搜尋〕</div>
                     <div class="flex gap-3">
-                        <input type="text" id="searchPhone" placeholder="請輸入完整的客戶電話號碼，系統將自動為您篩選..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:outline-none focus:border-blue-500">
-                        <button onclick="clearRepairSearch()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 border rounded-lg text-xs font-semibold transition">清除搜尋</button>
+                        <input type="text" id="searchPhone" placeholder="請輸入客戶完整的電話號碼進行篩選..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:outline-none focus:border-blue-500">
+                        <button onclick="clearRepairSearch()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 border rounded-lg text-xs font-semibold transition">清除</button>
                     </div>
                     
                     <div id="repairSearchResultWrapper" class="pt-2 hidden">
-                        <div class="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-100 px-4 py-2 rounded-lg mb-3">🎯 搜尋到 <span id="repairSearchCount" class="font-extrabold text-sm text-amber-600">0</span> 筆維修資料：</div>
-                        <div class="overflow-x-auto border border-slate-300 rounded-xl shadow-sm max-h-[400px]">
+                        <div class="text-xs font-bold text-slate-500 mb-2">🎯 搜尋結果 (<span id="repairSearchCount">0</span>)</div>
+                        <div class="overflow-x-auto border border-slate-300 rounded-lg max-h-[400px]">
                             <table class="w-full text-left border-collapse text-xs excel-table bg-white">
                                 <thead>
                                     <tr>
-                                        <th class="w-24 text-center">功能操作</th>
+                                        <th class="w-24 text-center">操作</th>
                                         <th>送修日期</th>
                                         <th>客戶姓名</th>
                                         <th>電話號碼</th>
@@ -181,20 +174,20 @@
                             </table>
                         </div>
                     </div>
-                    <div id="repairSearchNoDataMessage" class="hidden text-center py-4 text-slate-400 text-xs bg-slate-50 rounded-lg border border-dashed">❌ 找不到符合此電話號碼的維修紀錄</div>
+                    <div id="repairSearchNoDataMessage" class="hidden text-center py-4 text-slate-400 text-xs bg-slate-50 rounded-lg border border-dashed">❌ 找不到符合的維修紀錄</div>
                 </section>
 
                 <!-- 最新 10 筆維修單列表 -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-3.5 bg-slate-800 text-white flex justify-between items-center">
-                        <h2 class="text-xs font-bold tracking-wide">🗄️ 系統最新輸入資料（限展示前 10 筆檔案）</h2>
-                        <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded font-mono">總案量：<span id="repairTotalCount" class="text-white font-bold">0</span> 筆</span>
+                    <div class="px-6 py-3 bg-slate-800 text-white flex justify-between items-center">
+                        <h2 class="text-xs font-bold tracking-wide">📋 最新 10 筆維修資料</h2>
+                        <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded font-mono">總計：<span id="repairTotalCount" class="text-white font-bold">0</span> 筆</span>
                     </div>
                     <div class="overflow-x-auto max-h-[500px]">
                         <table class="w-full text-left border-collapse text-xs excel-table bg-white">
                             <thead>
                                 <tr>
-                                    <th class="w-24 text-center">功能操作</th>
+                                    <th class="w-24 text-center">操作</th>
                                     <th>送修日期</th>
                                     <th>客戶姓名</th>
                                     <th>電話號碼</th>
@@ -210,7 +203,7 @@
                             <tbody id="repairLatestTableBody"></tbody>
                         </table>
                     </div>
-                    <div id="repairLatestNoDataMessage" class="hidden text-center py-12 text-slate-400 text-xs">📭 目前系統中尚無維修資料。</div>
+                    <div id="repairLatestNoDataMessage" class="hidden text-center py-12 text-slate-400 text-xs">📭 目前無維修資料。</div>
                 </section>
             </div>
 
@@ -218,84 +211,79 @@
             <div id="sectionPart" class="space-y-8 hidden">
                 <!-- 零件輸入（單行橫向） -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                        <h2 id="partFormTitle" class="text-sm font-bold text-slate-700">⚙️ 新增庫存零件資料</h2>
+                    <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                        <h2 id="partFormTitle" class="text-sm font-bold text-slate-700">⚙️ 新增零件資料</h2>
                         <button id="cancelPartEditBtn" onclick="cancelPartEdit()" class="hidden text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded-md shadow-sm font-semibold transition">取消修改</button>
                     </div>
                     <div class="overflow-x-auto p-5 bg-slate-50/20">
                         <form id="partForm" class="flex items-center space-x-3 whitespace-nowrap min-w-max">
                             <input type="hidden" id="partRecordId">
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">零件編號*</label>
-                                <input type="text" id="partNo" required placeholder="如: P-101" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500">
+                                <label class="text-xs font-bold text-slate-500">零件編號</label>
+                                <input type="text" id="partNo" required placeholder="編號" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">中文名稱*</label>
-                                <input type="text" id="partNameZh" required placeholder="例如: 液晶面板" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                                <label class="text-xs font-bold text-slate-500">中文名稱</label>
+                                <input type="text" id="partNameZh" required placeholder="中文名" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">英文名稱*</label>
-                                <input type="text" id="partNameEn" required placeholder="如: LCD Screen" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500">
+                                <label class="text-xs font-bold text-slate-500">英文名稱</label>
+                                <input type="text" id="partNameEn" required placeholder="英文名" class="w-40 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">庫存數量*</label>
-                                <input type="number" id="partQty" min="0" value="0" required class="w-20 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                                <label class="text-xs font-bold text-slate-500">庫存數量</label>
+                                <input type="number" id="partQty" min="0" value="0" required class="w-20 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">存放櫃號*</label>
-                                <input type="text" id="cabinetNo" required placeholder="例如: A-03" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-emerald-500">
+                                <label class="text-xs font-bold text-slate-500">存放櫃號</label>
+                                <input type="text" id="cabinetNo" required placeholder="櫃號" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-rose-600">成本 (TWD)*</label>
-                                <input type="number" id="partCost" min="0" required placeholder="0" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                                <label class="text-xs font-bold text-rose-600">成本</label>
+                                <input type="number" id="partCost" min="0" required placeholder="成本" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-emerald-700">售價 (TWD)*</label>
-                                <input type="number" id="partPrice" min="0" required placeholder="0" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                                <label class="text-xs font-bold text-emerald-700">售價</label>
+                                <input type="number" id="partPrice" min="0" required placeholder="售價" class="w-24 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <button type="submit" id="partSubmitBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]">💾 儲存零件</button>
+                            <button type="submit" id="partSubmitBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]">💾 儲存</button>
                         </form>
                     </div>
                 </section>
 
                 <!-- 零件搜尋與 Excel 批量匯入大看板 -->
-                <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
-                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b pb-4 border-slate-100">
-                        <div class="space-y-1">
-                            <h2 class="text-sm font-bold text-slate-700">🔍 快速關鍵字搜尋零件庫存</h2>
-                            <p class="text-slate-400 text-xs">可直接輸入零件編號、中/英文名稱進行即時隨打即搜</p>
-                        </div>
-                        <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-200 flex items-center space-x-3 w-full lg:w-auto">
-                            <div class="text-left space-y-0.5">
-                                <span class="text-emerald-800 text-xs font-bold block">📥 批量匯入庫存 Excel</span>
-                                <span class="text-[10px] text-emerald-600 block">對應直欄：編號 | 中文名 | 英文名 | 數量 | 櫃號 | 成本 | 售價</span>
-                            </div>
-                            <label class="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition flex items-center whitespace-nowrap">
-                                📁 選擇 Excel 檔案
+                <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b pb-3 border-slate-100">
+                        <h2 class="text-sm font-bold text-slate-700">🔍 搜尋零件庫存</h2>
+                        
+                        <div class="bg-emerald-50/50 p-2 rounded-xl border border-emerald-200 flex items-center space-x-3">
+                            <span class="text-emerald-800 text-xs font-bold">📥 匯入零件 Excel</span>
+                            <label class="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
+                                選擇檔案
                                 <input type="file" id="excelImportFile" accept=".xlsx, .xls" class="hidden" onchange="handleExcelImport(this)">
                             </label>
                         </div>
                     </div>
 
                     <div class="flex gap-3">
-                        <input type="text" id="searchPartKeyword" placeholder="請輸入零件編號、中文名稱或英文名稱關鍵字進行模糊搜尋..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:outline-none focus:border-emerald-500">
-                        <button onclick="clearPartSearch()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 border rounded-lg text-xs font-semibold transition">清除搜尋</button>
+                        <input type="text" id="searchPartKeyword" placeholder="輸入關鍵字模糊搜尋..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:outline-none focus:border-emerald-500">
+                        <button onclick="clearPartSearch()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 border rounded-lg text-xs font-semibold transition">清除</button>
                     </div>
                     
                     <div id="partSearchResultWrapper" class="pt-2 hidden">
-                        <div class="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-100 px-4 py-2 rounded-lg mb-3">🎯 搜尋到 <span id="partSearchCount" class="font-extrabold text-sm text-teal-600">0</span> 筆零件資料：</div>
-                        <div class="overflow-x-auto border border-slate-300 rounded-lg shadow-sm max-h-[400px]">
+                        <div class="text-xs font-bold text-slate-500 mb-2">🎯 搜尋結果 (<span id="partSearchCount">0</span>)</div>
+                        <div class="overflow-x-auto border border-slate-300 rounded-lg max-h-[400px]">
                             <table class="w-full text-left border-collapse bg-white text-xs excel-table">
                                 <thead>
                                     <tr>
-                                        <th class="w-24 text-center">功能操作</th>
+                                        <th class="w-24 text-center">操作</th>
                                         <th>零件編號</th>
                                         <th>中文名稱</th>
                                         <th>英文名稱</th>
@@ -309,20 +297,20 @@
                             </table>
                         </div>
                     </div>
-                    <div id="partSearchNoDataMessage" class="hidden text-center py-4 text-slate-400 text-xs bg-slate-50 rounded-lg border border-dashed">❌ 找不到符合關鍵字的零件紀錄</div>
+                    <div id="partSearchNoDataMessage" class="hidden text-center py-4 text-slate-400 text-xs bg-slate-50 rounded-lg border border-dashed">❌ 找不到符合的零件紀錄</div>
                 </section>
 
                 <!-- 最新 10 筆零件列表 -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-3.5 bg-slate-700 text-white flex justify-between items-center">
-                        <h2 class="text-xs font-bold tracking-wide">📦 最新建立零件資料（限展示前 10 筆檔案）</h2>
-                        <span class="text-xs bg-slate-600 text-slate-300 px-2.5 py-1 rounded font-mono">總項目：<span id="partTotalCount" class="text-white font-bold">0</span> 項</span>
+                    <div class="px-6 py-3 bg-slate-700 text-white flex justify-between items-center">
+                        <h2 class="text-xs font-bold tracking-wide">📋 最新 10 筆零件資料</h2>
+                        <span class="text-xs bg-slate-600 text-slate-300 px-2.5 py-1 rounded font-mono">總計：<span id="partTotalCount" class="text-white font-bold">0</span> 項</span>
                     </div>
                     <div class="overflow-x-auto max-h-[500px]">
                         <table class="w-full text-left border-collapse text-xs excel-table bg-white">
                             <thead>
                                 <tr>
-                                    <th class="w-24 text-center">功能操作</th>
+                                    <th class="w-24 text-center">操作</th>
                                     <th>零件編號</th>
                                     <th>中文名稱</th>
                                     <th>英文名稱</th>
@@ -335,7 +323,7 @@
                             <tbody id="partLatestTableBody"></tbody>
                         </table>
                     </div>
-                    <div id="partLatestNoDataMessage" class="hidden text-center py-12 text-slate-400 text-xs">📭 目前零件庫中尚無任何資料。</div>
+                    <div id="partLatestNoDataMessage" class="hidden text-center py-12 text-slate-400 text-xs">📭 目前尚無資料。</div>
                 </section>
             </div>
 
@@ -343,37 +331,28 @@
     </div>
     <!-- ==================== 核心 JavaScript 邏輯控制 ==================== -->
     <script>
-        // 嚴格安全防護管理密碼
         const CORRECT_PASSWORD = '10710056'; 
-        
-        // 雙軌資料核心陣列（解鎖後才從本機載入暫存器）
         let repairRecords = [];
         let partRecords = [];
 
-        // 頁面初始化
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('systemPassword').focus();
             
-            // 綁定維修單電話號碼即時搜尋事件
             document.getElementById('searchPhone').addEventListener('input', function(e) {
                 doRepairSearch(e.target.value.trim());
             });
 
-            // 綁定零件欄位即時關鍵字模糊搜尋事件
             document.getElementById('searchPartKeyword').addEventListener('input', function(e) {
                 doPartSearch(e.target.value.trim());
             });
         });
 
-        // 密碼安全解鎖驗證
         function verifyPassword() {
             const inputPass = document.getElementById('systemPassword').value;
-            const errorMsg = document.getElementById('loginError');
             const overlay = document.getElementById('loginOverlay');
             const mainContent = document.getElementById('mainContent');
 
             if (inputPass === CORRECT_PASSWORD) {
-                // 驗證成功後讀取 LocalStorage 數據，確保無授權時完全零外洩
                 repairRecords = JSON.parse(localStorage.getItem('repair_records')) || [];
                 partRecords = JSON.parse(localStorage.getItem('part_records')) || [];
 
@@ -385,20 +364,18 @@
                 refreshRepairUI();
                 refreshPartUI();
             } else {
-                errorMsg.classList.remove('hidden');
+                // 【已修改為靜默防護】密碼不符時直接清空重設，不產生任何錯誤文字
                 document.getElementById('systemPassword').value = '';
                 document.getElementById('systemPassword').focus();
             }
         }
 
-        // 支援點選鍵盤 Enter 直接解鎖
         document.getElementById('systemPassword').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 verifyPassword();
             }
         });
 
-        // 安全登出（物理清除畫面與記憶體數據）
         function lockSystem() {
             repairRecords = [];
             partRecords = [];
@@ -417,7 +394,6 @@
             document.getElementById('excelImportFile').value = '';
 
             document.getElementById('systemPassword').value = '';
-            document.getElementById('loginError').classList.add('hidden');
             
             const overlay = document.getElementById('loginOverlay');
             const mainContent = document.getElementById('mainContent');
@@ -426,7 +402,6 @@
             mainContent.classList.add('hidden', 'opacity-0');
         }
 
-        // 系統分頁切換
         function switchTab(tabName) {
             const tabRepairBtn = document.getElementById('tabRepairBtn');
             const tabPartBtn = document.getElementById('tabPartBtn');
@@ -448,7 +423,7 @@
             }
         }
 
-        // ==================== 💼 [模組一] 維修客戶管理 (Excel 網格控制與匯出) ====================
+        // ==================== 💼 [模組一] 維修客戶管理邏輯 ====================
         function resetReceivedDate() {
             const dateInput = document.getElementById('receivedDate');
             if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
@@ -477,13 +452,13 @@
                 const index = repairRecords.findIndex(r => r.id == recordId);
                 if (index !== -1) {
                     repairRecords[index] = { ...repairRecords[index], ...formData };
-                    alert('🎉 維修單資料更新成功！');
+                    alert('更新成功');
                 }
                 cancelRepairEdit();
             } else {
                 formData.id = Date.now();
                 repairRecords.unshift(formData);
-                alert('💾 新維修單資料儲存成功！');
+                alert('儲存成功');
             }
 
             localStorage.setItem('repair_records', JSON.stringify(repairRecords));
@@ -583,11 +558,11 @@
             document.getElementById('pickupDate').value = record.pickupDate === '未取件' ? '' : record.pickupDate;
             document.getElementById('shippingNo').value = record.shippingNo === '無' ? '' : record.shippingNo;
 
-            document.getElementById('repairFormTitle').innerHTML = '✏️ <span class="text-amber-700 font-bold">正在修改維修單檔案</span>';
+            document.getElementById('repairFormTitle').innerHTML = '✏️ <span class="text-amber-700 font-bold">正在修改</span>';
             document.getElementById('cancelRepairEditBtn').classList.remove('hidden');
             
             const btn = document.getElementById('repairSubmitBtn');
-            btn.textContent = '🔄 更新維修單';
+            btn.textContent = '🔄 更新';
             btn.className = "bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -599,12 +574,12 @@
             document.getElementById('repairFormTitle').textContent = '📝 建立新維修單';
             document.getElementById('cancelRepairEditBtn').classList.add('hidden');
             const btn = document.getElementById('repairSubmitBtn');
-            btn.textContent = '💾 儲存資料';
+            btn.textContent = '💾 儲存';
             btn.className = "bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
         }
 
         function deleteRepairRecord(id) {
-            if (confirm('確定要刪除此筆維修紀錄嗎？')) {
+            if (confirm('確定刪除？')) {
                 if (document.getElementById('repairRecordId').value == id) cancelRepairEdit();
                 repairRecords = repairRecords.filter(r => r.id !== id);
                 localStorage.setItem('repair_records', JSON.stringify(repairRecords));
@@ -618,43 +593,27 @@
             doRepairSearch('');
         }
 
-        // 🌟 核心新增功能：一鍵匯出完整的客戶維修單檔案為 Excel
         function exportRepairToExcel() {
             if (repairRecords.length === 0) {
-                alert('⚠️ 匯出失敗：目前系統內尚無任何維修客戶紀錄可以進行匯出。');
+                alert('無紀錄可供匯出');
                 return;
             }
-
-            // 1. 定義 Excel 的中文表頭順序與名稱映射
             const excelHeader = [["送修日期", "客戶姓名", "電話號碼", "產品型號", "數量", "故障原因", "更換零件", "維修費用", "取件日期", "託運單號"]];
-            
-            // 2. 將本機結構資料重組為試算表橫向陣列
             const excelRows = repairRecords.map(r => [
-                r.receivedDate,
-                r.customerName,
-                r.customerPhone,
-                r.productModel,
-                Number(r.quantity),
-                r.issueReason,
-                r.replacedParts,
+                r.receivedDate, r.customerName, r.customerPhone, r.productModel,
+                Number(r.quantity), r.issueReason, r.replacedParts,
                 r.repairCost !== null ? Number(r.repairCost) : "尚未報價",
-                r.pickupDate,
-                r.shippingNo
+                r.pickupDate, r.shippingNo
             ]);
-
-            // 3. 建立並合並活頁簿數據
             const finalData = excelHeader.concat(excelRows);
             const worksheet = XLSX.utils.aoa_to_sheet(finalData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "維修紀錄報表");
-
-            // 4. 自動生成檔案名稱並下載 (格式: 維修單報表_20260520.xlsx)
+            XLSX.utils.book_append_sheet(workbook, worksheet, "維修紀錄");
             const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-            XLSX.writeFile(workbook, `維修客戶單報表_${dateStr}.xlsx`);
+            XLSX.writeFile(workbook, `維修客戶單_${dateStr}.xlsx`);
         }
 
-
-        // ==================== 📦 [模組二] 零件庫存管理與 Excel 智慧防錯導入/匯出引擎 ====================
+        // ==================== 📦 [模組二] 零件庫存管理邏輯 ====================
         function handleExcelImport(inputElement) {
             const files = inputElement.files;
             if (!files || files.length === 0) return;
@@ -666,13 +625,12 @@
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
                     
                     if (jsonData.length === 0) {
-                        alert('❌ 匯入失敗：這個 Excel 檔案內沒有發現任何有效的數據數據！');
+                        alert('檔案無數據');
                         inputElement.value = '';
                         return;
                     }
@@ -705,14 +663,8 @@
                             skipCount++;
                         } else {
                             partRecords.unshift({
-                                id: Date.now() + i, 
-                                partNo: pNo,
-                                partNameZh: pNameZh,
-                                partNameEn: pNameEn,
-                                partQty: pQty,
-                                cabinetNo: pCabinet,
-                                partCost: pCost,
-                                partPrice: pPrice
+                                id: Date.now() + i, partNo: pNo, partNameZh: pNameZh, partNameEn: pNameEn,
+                                partQty: pQty, cabinetNo: pCabinet, partCost: pCost, partPrice: pPrice
                             });
                             importCount++;
                         }
@@ -720,13 +672,10 @@
 
                     localStorage.setItem('part_records', JSON.stringify(partRecords));
                     refreshPartUI();
-                    
-                    alert(`📦 零件 Excel 試算表匯入大成功！\n──────────────────\n🔹 成功建立全新零件：${importCount} 項\n🔸 自動加總重複項目庫存：${skipCount} 項`);
+                    alert(`匯入完成\n新建立：${importCount} 項 / 已加總：${skipCount} 項`);
                     inputElement.value = '';
-
                 } catch (err) {
-                    console.error(err);
-                    alert('❌ 匯入失敗：請確認檔案是否為未損壞的標準 .xlsx 檔案，且直欄格式無誤。');
+                    alert('匯入失敗');
                     inputElement.value = '';
                 }
             };
@@ -737,7 +686,6 @@
             e.preventDefault();
 
             const recordId = document.getElementById('partRecordId').value;
-            
             const formData = {
                 partNo: document.getElementById('partNo').value.trim(),
                 partNameZh: document.getElementById('partNameZh').value.trim(),
@@ -752,18 +700,18 @@
                 const index = partRecords.findIndex(p => p.id == recordId);
                 if (index !== -1) {
                     partRecords[index] = { ...partRecords[index], ...formData };
-                    alert('🎉 零件庫存資料更新成功！');
+                    alert('更新成功');
                 }
                 cancelPartEdit();
             } else {
                 const isDup = partRecords.some(p => p.partNo.toLowerCase() === formData.partNo.toLowerCase());
                 if (isDup) {
-                    alert('⚠️ 儲存失敗：此零件編號已存在於系統中！\n如需調整，請直接點選下方列表的「✏️ 修改」，或透過 Excel 匯入自動加總。');
+                    alert('編號重複');
                     return;
                 }
                 formData.id = Date.now();
                 partRecords.unshift(formData);
-                alert('💾 新零件品項已儲存入庫！');
+                alert('儲存成功');
             }
 
             localStorage.setItem('part_records', JSON.stringify(partRecords));
@@ -785,9 +733,7 @@
 
             const q = keywordQuery.toLowerCase();
             const filtered = partRecords.filter(p => 
-                p.partNo.toLowerCase().includes(q) || 
-                p.partNameZh.toLowerCase().includes(q) || 
-                p.partNameEn.toLowerCase().includes(q)
+                p.partNo.toLowerCase().includes(q) || p.partNameZh.toLowerCase().includes(q) || p.partNameEn.toLowerCase().includes(q)
             );
 
             document.getElementById('partSearchCount').textContent = filtered.length;
@@ -827,7 +773,6 @@
             targetTbody.innerHTML = '';
             dataList.forEach(record => {
                 const tr = document.createElement('tr');
-                
                 tr.innerHTML = `
                     <td class="text-center bg-slate-50/50 sticky left-0 z-10 border-r border-slate-300">
                         <button onclick="startPartEdit(${record.id})" class="text-emerald-600 hover:text-white hover:bg-emerald-600 border border-emerald-300 px-2 py-0.5 rounded text-[11px] font-bold transition">✏️ 修改</button>
@@ -858,11 +803,11 @@
             document.getElementById('partCost').value = record.partCost;
             document.getElementById('partPrice').value = record.partPrice;
 
-            document.getElementById('partFormTitle').innerHTML = '✏️ <span class="text-amber-700 font-bold">正在修改庫存零件資料</span>';
+            document.getElementById('partFormTitle').innerHTML = '✏️ <span class="text-amber-700 font-bold">正在修改</span>';
             document.getElementById('cancelPartEditBtn').classList.remove('hidden');
             
             const btn = document.getElementById('partSubmitBtn');
-            btn.textContent = '🔄 更新零件';
+            btn.textContent = '🔄 更新';
             btn.className = "bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -870,15 +815,15 @@
         function cancelPartEdit() {
             document.getElementById('partForm').reset();
             document.getElementById('partRecordId').value = '';
-            document.getElementById('partFormTitle').textContent = '⚙️ 新增庫存零件資料';
+            document.getElementById('partFormTitle').textContent = '⚙️ 新增零件資料';
             document.getElementById('cancelPartEditBtn').classList.add('hidden');
             const btn = document.getElementById('partSubmitBtn');
-            btn.textContent = '💾 儲存零件';
+            btn.textContent = '💾 儲存';
             btn.className = "bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
         }
 
         function deletePartRecord(id) {
-            if (confirm('確定要刪除此筆零件品項嗎？')) {
+            if (confirm('確定刪除？')) {
                 if (document.getElementById('partRecordId').value == id) cancelPartEdit();
                 partRecords = partRecords.filter(p => p.id !== id);
                 localStorage.setItem('part_records', JSON.stringify(partRecords));
@@ -892,36 +837,21 @@
             doPartSearch('');
         }
 
-        // 🌟 核心新增功能：一鍵匯出完整的零件庫存清單為 Excel
         function exportPartToExcel() {
             if (partRecords.length === 0) {
-                alert('⚠️ 匯出失敗：目前零件庫存內尚無任何資料可以進行匯出。');
+                alert('無資料可供匯出');
                 return;
             }
-
-            // 1. 定義 Excel 報表表頭
             const excelHeader = [["零件編號", "中文名稱", "英文名稱", "庫存數量", "存放櫃號", "成本價 (TWD)", "對外售價 (TWD)"]];
-            
-            // 2. 映射重組資料
             const excelRows = partRecords.map(p => [
-                p.partNo,
-                p.partNameZh,
-                p.partNameEn,
-                Number(p.partQty),
-                p.cabinetNo,
-                Number(p.partCost),
-                Number(p.partPrice)
+                p.partNo, p.partNameZh, p.partNameEn, Number(p.partQty), p.cabinetNo, Number(p.partCost), Number(p.partPrice)
             ]);
-
-            // 3. 生成二維試算表
             const finalData = excelHeader.concat(excelRows);
             const worksheet = XLSX.utils.aoa_to_sheet(finalData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "庫存現況報表");
-
-            // 4. 自動生成檔案名稱並下載
+            XLSX.utils.book_append_sheet(workbook, worksheet, "零件庫存");
             const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-            XLSX.writeFile(workbook, `零件庫存清單報表_${dateStr}.xlsx`);
+            XLSX.writeFile(workbook, `零件庫存_${dateStr}.xlsx`);
         }
     </script>
 </body>
