@@ -32,7 +32,7 @@
 </head>
 <body class="bg-slate-50 font-sans antialiased pb-24 text-slate-800">
 
-    <!-- ==================== 密碼驗證遮罩層 (已移除錯誤文字) ==================== -->
+    <!-- ==================== 密碼驗證遮罩層 ==================== -->
     <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-4">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-6 border border-slate-100">
             <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-2xl mx-auto shadow-sm">🔒</div>
@@ -79,7 +79,7 @@
             
             <!-- ==================== [分頁一] 維修客戶管理介面 ==================== -->
             <div id="sectionRepair" class="space-y-8">
-                <!-- 維修單輸入（單行橫向） -->
+                <!-- 維修單輸入（單行橫向，產品型號可動態增加） -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                         <h2 id="repairFormTitle" class="text-sm font-bold text-slate-700">📝 建立新維修單</h2>
@@ -88,6 +88,7 @@
                     <div class="overflow-x-auto p-5 bg-slate-50/20">
                         <form id="repairForm" class="flex items-center space-x-3 whitespace-nowrap min-w-max">
                             <input type="hidden" id="repairRecordId">
+                            
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-slate-500">送修日期</label>
                                 <input type="date" id="receivedDate" required class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
@@ -103,15 +104,17 @@
                                 <input type="tel" id="customerPhone" required placeholder="電話" class="w-32 px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono focus:outline-none focus:border-blue-500">
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">產品型號</label>
-                                <input type="text" id="productModel" required placeholder="型號" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            
+                            <!-- 🌟 動態產品型號與數量容器區塊 -->
+                            <div id="productFieldsContainer" class="flex items-center space-x-2 bg-blue-50/40 p-1.5 rounded-xl border border-blue-100">
+                                <div class="product-group flex items-center space-x-2">
+                                    <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                                    <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                                </div>
                             </div>
-                            <div class="text-slate-300 font-bold text-base select-none">｜</div>
-                            <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">數量</label>
-                                <input type="number" id="quantity" min="1" value="1" required class="w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            </div>
+                            <!-- ➕ 增加型號按鈕 -->
+                            <button type="button" onclick="addProductField()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2 px-2.5 rounded-lg transition shadow-sm h-[36px] flex items-center justify-center">➕ 增加型號</button>
+                            
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
                                 <label class="text-xs font-bold text-rose-600">故障原因</label>
@@ -143,7 +146,7 @@
                     </div>
                 </section>
 
-                <!-- 維修電話搜尋大看板 (已加註：以電話號碼搜尋) -->
+                <!-- 維修電話搜尋大看板 -->
                 <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-3">
                     <div class="text-xs font-bold text-slate-400 select-none tracking-wider">〔以電話號碼搜尋〕</div>
                     <div class="flex gap-3">
@@ -161,8 +164,7 @@
                                         <th>送修日期</th>
                                         <th>客戶姓名</th>
                                         <th>電話號碼</th>
-                                        <th>產品型號</th>
-                                        <th>數量</th>
+                                        <th>產品型號 (數量)</th>
                                         <th>故障原因</th>
                                         <th>更換零件</th>
                                         <th>維修費用</th>
@@ -191,8 +193,7 @@
                                     <th>送修日期</th>
                                     <th>客戶姓名</th>
                                     <th>電話號碼</th>
-                                    <th>產品型號</th>
-                                    <th>數量</th>
+                                    <th>產品型號 (數量)</th>
                                     <th>故障原因</th>
                                     <th>更換零件</th>
                                     <th>維修費用</th>
@@ -329,7 +330,7 @@
 
         </main>
     </div>
-    <!-- ==================== 核心 JavaScript 邏輯控制 ==================== -->
+    <!-- ==================== 核心 JavaScript 邏輯控制 (動態型號版) ==================== -->
     <script>
         const CORRECT_PASSWORD = '10710056'; 
         let repairRecords = [];
@@ -364,7 +365,6 @@
                 refreshRepairUI();
                 refreshPartUI();
             } else {
-                // 【已修改為靜默防護】密碼不符時直接清空重設，不產生任何錯誤文字
                 document.getElementById('systemPassword').value = '';
                 document.getElementById('systemPassword').focus();
             }
@@ -392,6 +392,15 @@
             document.getElementById('searchPhone').value = '';
             document.getElementById('searchPartKeyword').value = '';
             document.getElementById('excelImportFile').value = '';
+            
+            // 重設型號輸入區
+            const container = document.getElementById('productFieldsContainer');
+            container.innerHTML = `
+                <div class="product-group flex items-center space-x-2">
+                    <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                    <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                </div>
+            `;
 
             document.getElementById('systemPassword').value = '';
             
@@ -424,6 +433,33 @@
         }
 
         // ==================== 💼 [模組一] 維修客戶管理邏輯 ====================
+        
+        // 🌟 核心新增功能：動態增加型號與數量輸入框（上限 10 個）
+        function addProductField() {
+            const container = document.getElementById('productFieldsContainer');
+            const currentGroups = container.getElementsByClassName('product-group');
+            
+            if (currentGroups.length >= 10) {
+                alert('⚠️ 已達上限：單筆維修單最多只能同時新增 10 個產品型號。');
+                return;
+            }
+
+            const newGroup = document.createElement('div');
+            newGroup.className = "product-group flex items-center space-x-1 border-l border-slate-300 pl-2 ml-1";
+            newGroup.innerHTML = `
+                <input type="text" placeholder="型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                <button type="button" onclick="removeProductField(this)" class="text-rose-500 hover:bg-rose-50 text-sm font-bold px-1 rounded transition">✕</button>
+            `;
+            container.appendChild(newGroup);
+        }
+
+        // 移除指定的型號輸入框
+        function removeProductField(buttonElement) {
+            const group = buttonElement.parentElement;
+            group.remove();
+        }
+
         function resetReceivedDate() {
             const dateInput = document.getElementById('receivedDate');
             if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
@@ -435,12 +471,24 @@
             const recordId = document.getElementById('repairRecordId').value;
             const rawCost = document.getElementById('repairCost').value;
             
+            // 提取所有動態輸入的型號與數量
+            const modelInputs = document.getElementsByClassName('product-model-input');
+            const qtyInputs = document.getElementsByClassName('product-qty-input');
+            let productsArray = [];
+
+            for (let i = 0; i < modelInputs.length; i++) {
+                const mVal = modelInputs[i].value.trim();
+                const qVal = Number(qtyInputs[i].value);
+                if (mVal) {
+                    productsArray.push({ model: mVal, qty: qVal });
+                }
+            }
+            
             const formData = {
                 receivedDate: document.getElementById('receivedDate').value,
                 customerName: document.getElementById('customerName').value.trim(),
                 customerPhone: document.getElementById('customerPhone').value.trim(),
-                productModel: document.getElementById('productModel').value.trim(),
-                quantity: document.getElementById('quantity').value,
+                products: productsArray, // 儲存多型號陣列
                 issueReason: document.getElementById('issueReason').value.trim(),
                 replacedParts: document.getElementById('replacedParts').value.trim() || '無',
                 repairCost: rawCost !== '' ? Number(rawCost) : null,
@@ -462,7 +510,17 @@
             }
 
             localStorage.setItem('repair_records', JSON.stringify(repairRecords));
+            
+            // 重設表單與型號區域
             this.reset();
+            const container = document.getElementById('productFieldsContainer');
+            container.innerHTML = `
+                <div class="product-group flex items-center space-x-2">
+                    <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                    <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                </div>
+            `;
+            
             resetReceivedDate();
             refreshRepairUI();
             doRepairSearch(document.getElementById('searchPhone').value.trim());
@@ -513,6 +571,7 @@
             renderRepairRows(top10, latestTbody);
         }
 
+        // 維修單網格渲染功能
         function renderRepairRows(dataList, targetTbody) {
             targetTbody.innerHTML = '';
             dataList.forEach(record => {
@@ -522,6 +581,15 @@
                     ? `<span class="text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[11px] font-bold border border-amber-200">尚未報價</span>` 
                     : `<span class="font-mono text-slate-900 font-bold">$${record.repairCost.toLocaleString()}</span>`;
 
+                // 處理多商品型號在網格內的排版呈現 (換列顯示)
+                let productsDisplay = '';
+                if (record.products && record.products.length > 0) {
+                    productsDisplay = record.products.map(p => `<div><span class="bg-slate-100 border px-1.5 py-0.5 rounded font-bold">${p.model}</span> <span class="text-slate-400">x</span> <span class="font-bold">${p.qty}</span></div>`).join('<div class="h-1"></div>');
+                } else if (record.productModel) {
+                    // 相容舊資料格式
+                    productsDisplay = `<div><span class="bg-slate-100 border px-1.5 py-0.5 rounded font-bold">${record.productModel}</span> <span class="text-slate-400">x</span> <span class="font-bold">${record.quantity || 1}</span></div>`;
+                }
+
                 tr.innerHTML = `
                     <td class="text-center bg-slate-50/50 sticky left-0 z-10 border-r border-slate-300">
                         <button onclick="startRepairEdit(${record.id})" class="text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-300 px-2 py-0.5 rounded text-[11px] font-bold transition">✏️ 修改</button>
@@ -530,8 +598,7 @@
                     <td class="font-bold text-slate-900 font-mono">${record.receivedDate}</td>
                     <td class="font-extrabold text-slate-800">${record.customerName}</td>
                     <td class="font-mono font-bold text-blue-700 bg-blue-50/50">${record.customerPhone}</td>
-                    <td><span class="bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-bold">${record.productModel}</span></td>
-                    <td class="text-center font-bold">${record.quantity}</td>
+                    <td class="whitespace-normal min-w-[180px]">${productsDisplay}</td>
                     <td class="text-rose-600 font-bold whitespace-normal max-w-xs">${record.issueReason}</td>
                     <td class="text-emerald-700 font-bold bg-emerald-50/30">${record.replacedParts}</td>
                     <td class="text-right pr-4">${costDisplay}</td>
@@ -542,6 +609,7 @@
             });
         }
 
+        // 修改時反向還原生成多個型號節點
         function startRepairEdit(id) {
             const record = repairRecords.find(r => r.id === id);
             if (!record) return;
@@ -550,13 +618,37 @@
             document.getElementById('receivedDate').value = record.receivedDate;
             document.getElementById('customerName').value = record.customerName;
             document.getElementById('customerPhone').value = record.customerPhone;
-            document.getElementById('productModel').value = record.productModel;
-            document.getElementById('quantity').value = record.quantity;
             document.getElementById('issueReason').value = record.issueReason;
             document.getElementById('replacedParts').value = record.replacedParts === '無' ? '' : record.replacedParts;
             document.getElementById('repairCost').value = record.repairCost !== null ? record.repairCost : '';
             document.getElementById('pickupDate').value = record.pickupDate === '未取件' ? '' : record.pickupDate;
             document.getElementById('shippingNo').value = record.shippingNo === '無' ? '' : record.shippingNo;
+
+            // 還原生成型號與數量輸入框
+            const container = document.getElementById('productFieldsContainer');
+            container.innerHTML = '';
+
+            if (record.products && record.products.length > 0) {
+                record.products.forEach((p, idx) => {
+                    const group = document.createElement('div');
+                    group.className = "product-group flex items-center space-x-1" + (idx > 0 ? " border-l border-slate-300 pl-2 ml-1" : "");
+                    group.innerHTML = `
+                        <input type="text" value="${p.model}" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                        <input type="number" value="${p.qty}" min="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                        ${idx > 0 ? '<button type="button" onclick="removeProductField(this)" class="text-rose-500 hover:bg-rose-50 text-sm font-bold px-1 rounded transition">✕</button>' : ''}
+                    `;
+                    container.appendChild(group);
+                });
+            } else {
+                // 還原舊單筆型號格式
+                const group = document.createElement('div');
+                group.className = "product-group flex items-center space-x-2";
+                group.innerHTML = `
+                    <input type="text" value="${record.productModel || ''}" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                    <input type="number" value="${record.quantity || 1}" min="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                `;
+                container.appendChild(group);
+            }
 
             document.getElementById('repairFormTitle').innerHTML = '✏️ <span class="text-amber-700 font-bold">正在修改</span>';
             document.getElementById('cancelRepairEditBtn').classList.remove('hidden');
@@ -570,6 +662,15 @@
         function cancelRepairEdit() {
             document.getElementById('repairForm').reset();
             document.getElementById('repairRecordId').value = '';
+            
+            const container = document.getElementById('productFieldsContainer');
+            container.innerHTML = `
+                <div class="product-group flex items-center space-x-2">
+                    <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                    <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                </div>
+            `;
+
             resetReceivedDate();
             document.getElementById('repairFormTitle').textContent = '📝 建立新維修單';
             document.getElementById('cancelRepairEditBtn').classList.add('hidden');
@@ -593,18 +694,28 @@
             doRepairSearch('');
         }
 
+        // 匯出包含多商品的維修單至 Excel (多商品在同一儲存格內以換行符整齊排列)
         function exportRepairToExcel() {
             if (repairRecords.length === 0) {
                 alert('無紀錄可供匯出');
                 return;
             }
-            const excelHeader = [["送修日期", "客戶姓名", "電話號碼", "產品型號", "數量", "故障原因", "更換零件", "維修費用", "取件日期", "託運單號"]];
-            const excelRows = repairRecords.map(r => [
-                r.receivedDate, r.customerName, r.customerPhone, r.productModel,
-                Number(r.quantity), r.issueReason, r.replacedParts,
-                r.repairCost !== null ? Number(r.repairCost) : "尚未報價",
-                r.pickupDate, r.shippingNo
-            ]);
+            const excelHeader = [["送修日期", "客戶姓名", "電話號碼", "產品型號與數量", "故障原因", "更換零件", "維修費用", "取件日期", "託運單號"]];
+            
+            const excelRows = repairRecords.map(r => {
+                let prodString = '';
+                if (r.products && r.products.length > 0) {
+                    prodString = r.products.map(p => `${p.model} (${p.qty}件)`).join('\n');
+                } else {
+                    prodString = `${r.productModel || ''} (${r.quantity || 1}件)`;
+                }
+
+                return [
+                    r.receivedDate, r.customerName, r.customerPhone, prodString, r.issueReason, r.replacedParts,
+                    r.repairCost !== null ? Number(r.repairCost) : "尚未報價", r.pickupDate, r.shippingNo
+                ];
+            });
+
             const finalData = excelHeader.concat(excelRows);
             const worksheet = XLSX.utils.aoa_to_sheet(finalData);
             const workbook = XLSX.utils.book_new();
@@ -833,26 +944,4 @@
         }
 
         function clearPartSearch() {
-            document.getElementById('searchPartKeyword').value = '';
-            doPartSearch('');
-        }
-
-        function exportPartToExcel() {
-            if (partRecords.length === 0) {
-                alert('無資料可供匯出');
-                return;
-            }
-            const excelHeader = [["零件編號", "中文名稱", "英文名稱", "庫存數量", "存放櫃號", "成本價 (TWD)", "對外售價 (TWD)"]];
-            const excelRows = partRecords.map(p => [
-                p.partNo, p.partNameZh, p.partNameEn, Number(p.partQty), p.cabinetNo, Number(p.partCost), Number(p.partPrice)
-            ]);
-            const finalData = excelHeader.concat(excelRows);
-            const worksheet = XLSX.utils.aoa_to_sheet(finalData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "零件庫存");
-            const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-            XLSX.writeFile(workbook, `零件庫存_${dateStr}.xlsx`);
-        }
-    </script>
-</body>
-</html>
+            document.getElementById('searchPart
