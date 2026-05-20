@@ -185,7 +185,6 @@
                             </table>
                         </div>
                     </div>
-                    <div id="repairSearchNoDataMessage" class="hidden text-center py-4 text-slate-400 text-xs bg-slate-50 rounded-lg border border-dashed">❌ 找不到符合的維修紀錄</div>
                 </section>
 
                 <!-- 最新 10 筆維修單列表 -->
@@ -308,7 +307,6 @@
                             </table>
                         </div>
                     </div>
-                    <div id="partSearchNoDataMessage" class="hidden text-center py-4 text-slate-400 text-xs bg-slate-50 rounded-lg border border-dashed">❌ 找不到符合的零件紀錄</div>
                 </section>
 
                 <!-- 最新 10 筆零件列表 -->
@@ -664,23 +662,20 @@
         function doRepairSearch(phoneKeyword) {
             const wrapper = document.getElementById('repairSearchResultWrapper');
             const tbody = document.getElementById('repairSearchTableBody');
-            const noData = document.getElementById('repairSearchNoDataMessage');
             
             tbody.innerHTML = '';
             if (!phoneKeyword) {
                 wrapper.classList.add('hidden');
-                noData.classList.add('hidden');
                 return;
             }
 
             const results = repairRecords.filter(r => r.customerPhone && r.customerPhone.includes(phoneKeyword));
             document.getElementById('repairSearchCount').innerText = results.length;
-            wrapper.classList.remove('hidden');
-
+            
             if (results.length === 0) {
-                noData.classList.remove('hidden');
+                wrapper.classList.add('hidden');
             } else {
-                noData.classList.add('hidden');
+                wrapper.classList.remove('hidden');
                 results.forEach(record => {
                     tbody.appendChild(createRepairRow(record));
                 });
@@ -802,12 +797,10 @@
         function doPartSearch(keyword) {
             const wrapper = document.getElementById('partSearchResultWrapper');
             const tbody = document.getElementById('partSearchTableBody');
-            const noData = document.getElementById('partSearchNoDataMessage');
             
             tbody.innerHTML = '';
             if (!keyword) {
                 wrapper.classList.add('hidden');
-                noData.classList.add('hidden');
                 return;
             }
 
@@ -820,12 +813,11 @@
             );
 
             document.getElementById('partSearchCount').innerText = results.length;
-            wrapper.classList.remove('hidden');
 
             if (results.length === 0) {
-                noData.classList.remove('hidden');
+                wrapper.classList.add('hidden');
             } else {
-                noData.classList.add('hidden');
+                wrapper.classList.remove('hidden');
                 results.forEach(record => {
                     tbody.appendChild(createPartRow(record));
                 });
