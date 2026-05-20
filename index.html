@@ -50,7 +50,7 @@
     <!-- ==================== 核心系統網頁內容 ==================== -->
     <div id="mainContent" class="hidden opacity-0 transition-opacity duration-300">
         
-        <!-- 頂部導覽列：整合雙系統一鍵下載功能 -->
+        <!-- 頂部導覽列 -->
         <header class="bg-slate-900 text-white shadow-sm sticky top-0 z-50">
             <div class="max-w-[95%] mx-auto px-6 py-4 flex justify-between items-center flex-wrap gap-4">
                 <h1 class="text-xl font-bold tracking-wider">🔧 維修與零件綜合管理面板</h1>
@@ -128,9 +128,11 @@
                                 <label class="text-xs font-bold text-slate-500">維修費用</label>
                                 <input type="number" id="repairCost" min="0" placeholder="費用" class="w-28 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             </div>
+                            
+                            <!-- 🌟 欄位修改：取件日期變更為通知取件日期 -->
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             <div class="flex items-center space-x-2">
-                                <label class="text-xs font-bold text-slate-500">取件日期</label>
+                                <label class="text-xs font-bold text-slate-500">通知取件日期</label>
                                 <input type="date" id="pickupDate" class="w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             </div>
                             
@@ -173,7 +175,7 @@
                                         <th>故障原因</th>
                                         <th>更換零件</th>
                                         <th>維修費用</th>
-                                        <th>取件日期</th>
+                                        <th>通知取件日期</th>
                                         <th>客戶取走日期</th>
                                         <th>託運單號</th>
                                     </tr>
@@ -203,7 +205,7 @@
                                     <th>故障原因</th>
                                     <th>更換零件</th>
                                     <th>維修費用</th>
-                                    <th>取件日期</th>
+                                    <th>通知取件日期</th>
                                     <th>客戶取走日期</th>
                                     <th>託運單號</th>
                                 </tr>
@@ -215,7 +217,7 @@
                 </section>
             </div>
 
-            <!-- 🛠️ 實體大分隔線：徹底區開上下兩個區塊 -->
+            <!-- 實體大分隔線 -->
             <hr class="border-t-4 border-dashed border-slate-300 my-8">
 
             <!-- ==================== 【綜合管理：下半部 - ⚙️ 零件庫存管理區】 ==================== -->
@@ -344,7 +346,7 @@
 
         </main>
     </div>
-    <!-- ==================== 核心 JavaScript 邏輯控制 ==================== -->
+    <!-- ==================== 核心 JavaScript 邏輯控制 (更名通知取件日期版) ==================== -->
     <script>
         const CORRECT_PASSWORD = '10710056'; 
         let repairRecords = [];
@@ -453,7 +455,7 @@
 
         function resetReceivedDate() {
             const dateInput = document.getElementById('receivedDate');
-            if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+            if (dateInput) dateInput.value = new Date().toISOString().split('T');
         }
 
         document.getElementById('repairForm').addEventListener('submit', function(e) {
@@ -482,7 +484,7 @@
                 issueReason: document.getElementById('issueReason').value.trim(),
                 replacedParts: document.getElementById('replacedParts').value.trim() || '無',
                 repairCost: rawCost !== '' ? Number(rawCost) : null,
-                pickupDate: document.getElementById('pickupDate').value || '未取件',
+                pickupDate: document.getElementById('pickupDate').value || '未通知', // 通知取件日期
                 customerPickupDate: document.getElementById('customerPickupDate').value || '未取走',
                 shippingNo: document.getElementById('shippingNo').value.trim() || '無'
             };
@@ -629,7 +631,7 @@
             document.getElementById('issueReason').value = record.issueReason;
             document.getElementById('replacedParts').value = record.replacedParts === '無' ? '' : record.replacedParts;
             document.getElementById('repairCost').value = record.repairCost !== null ? record.repairCost : '';
-            document.getElementById('pickupDate').value = record.pickupDate === '未取件' ? '' : record.pickupDate;
+            document.getElementById('pickupDate').value = (record.pickupDate === '未通知' || record.pickupDate === '未取件') ? '' : record.pickupDate;
             document.getElementById('customerPickupDate').value = (record.customerPickupDate === '未取件' || record.customerPickupDate === '未取走') ? '' : record.customerPickupDate;
             document.getElementById('shippingNo').value = record.shippingNo === '無' ? '' : record.shippingNo;
 
@@ -674,7 +676,7 @@
                 alert('無紀錄可供匯出');
                 return;
             }
-            const excelHeader = [["送修日期", "客戶姓名", "電話號碼", "產品型號 (數量)", "總項數", "故障原因", "更換零件", "維修費用", "取件日期", "客戶取走日期", "託運單號"]];
+            const excelHeader = [["送修日期", "客戶姓名", "電話號碼", "產品型號 (數量)", "總項數", "故障原因", "更換零件", "維修費用", "通知取件日期", "客戶取走日期", "託運單號"]];
             const excelRows = repairRecords.map(r => [
                 r.receivedDate, r.customerName, r.customerPhone, r.productModel,
                 Number(r.quantity), r.issueReason, r.replacedParts,
@@ -685,11 +687,11 @@
             const worksheet = XLSX.utils.aoa_to_sheet(finalData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "維修紀錄");
-            const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+            const dateStr = new Date().toISOString().split('T').replace(/-/g, '');
             XLSX.writeFile(workbook, `維修客戶單_${dateStr}.xlsx`);
         }
 
-        // ==================== 📦 [模組二] 零件庫存管理核心控制邏輯 ====================
+        // ==================== 📦 [模組二] 零件庫存管理與 Excel 智慧防錯導入/匯出引擎 ====================
         function handleExcelImport(inputElement) {
             const files = inputElement.files;
             if (!files || files.length === 0) return;
@@ -912,7 +914,7 @@
             const worksheet = XLSX.utils.aoa_to_sheet(finalData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "零件庫存");
-            const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+            const dateStr = new Date().toISOString().split('T').replace(/-/g, '');
             XLSX.writeFile(workbook, `零件庫存_${dateStr}.xlsx`);
         }
     </script>
