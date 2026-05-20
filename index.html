@@ -7,11 +7,11 @@
     <!-- 引入 Tailwind CSS -->
     <script src="https://tailwindcss.com"></script>
     
-    <!-- 🌟 核心升級：引入 Google Firebase 官方雲端資料庫核心套件 -->
+    <!-- 核心：引入 Google Firebase 官方雲端資料庫核心套件 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-    <!-- 🌟 擴充：引入 SheetJS 用於解析 Excel 檔案 -->
+    <!-- 擴充：引入 SheetJS 用於解析 Excel 檔案 -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -357,9 +357,8 @@
         </main>
     </div>
 
-    <!-- ==================== 核心 JavaScript 雲端同步與下載控制 ==================== -->
+    <!-- ==================== 核心 JavaScript ==================== -->
     <script>
-        // 🌟 核心金鑰設定：包含完整的資料庫端點與專專屬安全憑證
         const firebaseConfig = {
             apiKey: "AIzaSyBe5SYF7iyhs6Tq70OpRKGS63jWkyeWvxw",
             authDomain: "total-repair-system.firebaseapp.com",
@@ -370,10 +369,8 @@
             appId: "1:1078906329630:web:b81887dd7390c7cd53ac0f",
         };
 
-        // 嚴格安全管理密碼
         const CORRECT_PASSWORD = '10710056'; 
         
-        // 全域暫存變數
         let repairRecords = [];
         let partRecords = [];
         let dbRepairRef, dbPartRef;
@@ -382,7 +379,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('systemPassword').focus();
             
-            // 綁定搜尋輸入監聽
             document.getElementById('searchPhone').addEventListener('input', function(e) {
                 doRepairSearch(e.target.value.trim());
             });
@@ -391,27 +387,22 @@
                 doPartSearch(e.target.value.trim());
             });
             
-            // 綁定密碼欄位 Enter 鍵事件
             document.getElementById('systemPassword').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') verifyPassword();
             });
         });
 
-        // 初始化 Firebase 雲端資料庫並開啟「即時雙向監聽」
         function initFirebaseAndSync() {
             if (isFirebaseInitialized) return;
 
-            // 初始化 Google SDK (防重複載入機制)
             if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
             }
             const database = firebase.database();
             
-            // 建立雲端資料夾節點路徑
             dbRepairRef = database.ref('repair_records');
             dbPartRef = database.ref('part_records');
             
-            // 🌟 核心雲端引擎：監聽維修單資料庫
             dbRepairRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 repairRecords = [];
@@ -419,13 +410,13 @@
                     Object.keys(data).forEach(key => {
                         repairRecords.push({ firebaseKey: key, ...data[key] });
                     });
+                    // 確保依據獨立 ID 由新到舊排序
                     repairRecords.sort((a, b) => (b.id || 0) - (a.id || 0));
                 }
                 refreshRepairUI();
                 doRepairSearch(document.getElementById('searchPhone').value.trim());
             });
 
-            // 🌟 核心雲端引擎：監聽零件庫存資料庫
             dbPartRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 partRecords = [];
@@ -452,7 +443,6 @@
                 mainContent.classList.remove('hidden', 'opacity-0');
                 mainContent.classList.add('opacity-100');
                 
-                // 修正處：直接安全的初始化表單日期
                 const dateInput = document.getElementById('receivedDate');
                 if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
                 
@@ -494,9 +484,22 @@
             isFirebaseInitialized = false;
         }
 
-        // ==================== 📥 新增功能：Excel 檔案讀取與雲端批次同步邏輯 ====================
+        // ==================== 📥 核心優化：Excel 模糊欄位配對與進度提示 ====================
         
-        // 處理維修檔案匯入
+        // 輔助函式：用來在大大小小、可能打錯字或空格的標題中尋找正確資料
+        function findExcelValue(rowObj, keysToTry) {
+            for (let k of keysToTry) {
+                if (rowObj[k] !== undefined) return rowObj[k];
+                // 去除前後空格與內部空格再比對一次
+                for (let actualKey in rowObj) {
+                    if (actualKey.replace(/\s+/g, '') === k.replace(/\s+/g, '')) {
+                        return rowObj[actualKey];
+                    }
+                }
+            }
+            return undefined;
+        }
+
         function handleRepairExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -508,12 +511,10 @@
                     const workbook = XLSX.read(data, { type: 'array' });
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
-                    
-                    // 轉為 JSON 陣列 (將標題自動對齊為 Key)
                     const jsonRows = XLSX.utils.sheet_to_json(worksheet);
                     
                     if (jsonRows.length === 0) {
-                        alert('Excel 檔案內沒有找到任何數據列！');
+                        alert('Excel 檔案內沒有找到任何數據！');
                         return;
                     }
 
@@ -524,44 +525,44 @@
 
                     let successCount = 0;
                     jsonRows.forEach((row, index) => {
-                        // 解析總項數 (計算產品型號括弧內的件數，防呆預設為 1)
+                        // 取得模糊匹配的值
+                        const productRaw = findExcelValue(row, ['產品型號(數量)', '產品型號', '型號']);
+                        const productStr = productRaw ? String(productRaw).trim() : '未登記型號';
+                        
                         let totalQty = 1;
-                        const productStr = String(row['產品型號(數量)'] || row['產品型號'] || '');
                         const qtyMatch = productStr.match(/\((\d+)件\)/);
                         if (qtyMatch) {
                             totalQty = parseInt(qtyMatch[1]) || 1;
                         }
 
                         const formData = {
-                            id: Date.now() + index, // 生成獨立 ID 防止衝突
-                            receivedDate: row['送送日期'] || row['送修日期'] || new Date().toISOString().split('T')[0],
-                            customerName: String(row['客戶姓名'] || '').trim(),
-                            customerPhone: String(row['電話號碼'] || '').trim(),
-                            products: productStr || '未登記型號',
+                            id: Date.now() + index, 
+                            receivedDate: String(findExcelValue(row, ['送修日期', '送送日期', '日期']) || new Date().toISOString().split('T')[0]).trim(),
+                            customerName: String(findExcelValue(row, ['客戶姓名', '姓名']) || '').trim(),
+                            customerPhone: String(findExcelValue(row, ['電話號碼', '電話', '手機']) || '').trim(),
+                            products: productStr,
                             totalQty: totalQty,
-                            issueReason: String(row['故障原因'] || '未填寫').trim(),
-                            replacedParts: String(row['更換零件'] || '無').trim(),
-                            repairCost: parseInt(row['維修費用']) || 0,
-                            pickupDate: row['通知取件日期'] || '未取件',
-                            customerPickupDate: row['客戶取走日期'] || '未取回',
-                            shippingNo: String(row['託運單號'] || '無').trim()
+                            issueReason: String(findExcelValue(row, ['故障原因', '原因', '問題']) || '未填寫').trim(),
+                            replacedParts: String(findExcelValue(row, ['更換零件', '零件']) || '無').trim(),
+                            repairCost: parseInt(findExcelValue(row, ['維修費用', '費用', '金額'])) || 0,
+                            pickupDate: String(findExcelValue(row, ['通知取件日期', '通知日期']) || '未取件').trim(),
+                            customerPickupDate: String(findExcelValue(row, ['客戶取走日期', '取走日期']) || '未取回').trim(),
+                            shippingNo: String(findExcelValue(row, ['託運單號', '單號', '貨運單號']) || '無').trim()
                         };
 
-                        // 直接推送到 Firebase 雲端
                         dbRepairRef.push(formData);
                         successCount++;
                     });
 
-                    alert(`🎉 成功批次匯入 ${successCount} 筆維修單至雲端！`);
+                    alert(`🎉 成功解析並匯入 ${successCount} 筆維修單至雲端！\n\n💡 提示：如果資料量超過 10 筆，請直接在下方搜尋欄輸入剛剛匯入的「電話號碼」即可顯示在畫面上！`);
                 } catch (error) {
-                    alert('Excel 解析失敗，請確認檔案格式是否正確。錯誤訊息：' + error.message);
+                    alert('Excel 解析失敗，請確認格式。錯誤：' + error.message);
                 }
-                event.target.value = ''; // 清空選擇器
+                event.target.value = ''; 
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // 處理零件檔案匯入
         function handlePartExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -573,11 +574,10 @@
                     const workbook = XLSX.read(data, { type: 'array' });
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
-                    
                     const jsonRows = XLSX.utils.sheet_to_json(worksheet);
                     
                     if (jsonRows.length === 0) {
-                        alert('Excel 檔案內沒有找到任何數據列！');
+                        alert('Excel 檔案內沒有找到任何數據！');
                         return;
                     }
 
@@ -590,29 +590,29 @@
                     jsonRows.forEach((row, index) => {
                         const formData = {
                             id: Date.now() + index,
-                            partNo: String(row['零件編號'] || '').trim().toUpperCase(),
-                            partNameZh: String(row['中文名稱'] || '').trim(),
-                            partNameEn: String(row['英文名稱'] || '').trim(),
-                            partQty: parseInt(row['庫存數量']) || 0,
-                            cabinetNo: String(row['存放櫃號'] || '未分區').trim().toUpperCase(),
-                            partCost: parseInt(row['成本價'] || row['成本']) || 0,
-                            partPrice: parseInt(row['對外售價'] || row['售價']) || 0
+                            partNo: String(findExcelValue(row, ['零件編號', '編號', '料號']) || '').trim().toUpperCase(),
+                            partNameZh: String(findExcelValue(row, ['中文名稱', '中文名', '品名']) || '').trim(),
+                            partNameEn: String(findExcelValue(row, ['英文名稱', '英文名']) || '').trim(),
+                            partQty: parseInt(findExcelValue(row, ['庫存數量', '庫存', '數量'])) || 0,
+                            cabinetNo: String(findExcelValue(row, ['存放櫃號', '櫃號', '位置']) || '未分區').trim().toUpperCase(),
+                            partCost: parseInt(findExcelValue(row, ['成本價', '成本'])) || 0,
+                            partPrice: parseInt(findExcelValue(row, ['對外售價', '售價', '定價'])) || 0
                         };
 
                         dbPartRef.push(formData);
                         successCount++;
                     });
 
-                    alert(`🎉 成功批次匯入 ${successCount} 項零件庫存至雲端！`);
+                    alert(`🎉 成功解析並匯入 ${successCount} 項零件庫存至雲端！\n\n💡 提示：超出最新 10 筆的舊物料，請直接使用下方的「零件庫存搜尋欄」輸入關鍵字即可即時查閱！`);
                 } catch (error) {
-                    alert('Excel 解析失敗，請確認檔案格式是否正確。錯誤訊息：' + error.message);
+                    alert('Excel 解析失敗，請確認格式。錯誤：' + error.message);
                 }
                 event.target.value = ''; 
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // ==================== 💼 [模組一] 維修客戶管理雲端資料控制 ====================
+        // ==================== [模組一] 維修客戶管理雲端資料控制 ====================
         
         function addProductField() {
             const container = document.getElementById('productFieldsContainer');
@@ -820,7 +820,6 @@
             doRepairSearch('');
         }
 
-
         // ==================== ⚙️ [模組二] 零件庫存管理雲端資料控制 ====================
 
         document.getElementById('partForm').addEventListener('submit', function(e) {
@@ -965,7 +964,7 @@
             doPartSearch('');
         }
 
-        // ==================== 📊 [模組三] 資料安全防護導出控制 (CSV 引擎) ====================
+        // ==================== 📊 資料安全防護導出控制 (CSV 引擎) ====================
 
         function exportRepairToCSV() {
             if (repairRecords.length === 0) {
@@ -973,7 +972,7 @@
                 return;
             }
             
-            let csvContent = "\uFEFF"; // 解決 Excel 開啟亂碼的 BOM
+            let csvContent = "\uFEFF"; 
             csvContent += "送修日期,客戶姓名,電話號碼,產品型號(數量),總項數,故障原因,更換零件,維修費用,通知取件日期,客戶取走日期,託運單號\n";
             
             repairRecords.forEach(rec => {
