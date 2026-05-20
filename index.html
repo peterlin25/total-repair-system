@@ -330,7 +330,7 @@
 
         </main>
     </div>
-    <!-- ==================== 核心 JavaScript 邏輯控制 (動態型號版) ==================== -->
+    <!-- ==================== 核心 JavaScript 邏輯控制 ==================== -->
     <script>
         const CORRECT_PASSWORD = '10710056'; 
         let repairRecords = [];
@@ -392,15 +392,7 @@
             document.getElementById('searchPhone').value = '';
             document.getElementById('searchPartKeyword').value = '';
             document.getElementById('excelImportFile').value = '';
-            
-            // 重設型號輸入區
-            const container = document.getElementById('productFieldsContainer');
-            container.innerHTML = `
-                <div class="product-group flex items-center space-x-2">
-                    <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                    <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                </div>
-            `;
+            resetProductFields();
 
             document.getElementById('systemPassword').value = '';
             
@@ -434,30 +426,42 @@
 
         // ==================== 💼 [模組一] 維修客戶管理邏輯 ====================
         
-        // 🌟 核心新增功能：動態增加型號與數量輸入框（上限 10 個）
+        // 🌟 核心修正：動態增加產品型號與數量輸入框（上限 10 個）
         function addProductField() {
             const container = document.getElementById('productFieldsContainer');
-            const currentGroups = container.getElementsByClassName('product-group');
+            const currentFields = container.getElementsByClassName('product-group');
             
-            if (currentGroups.length >= 10) {
-                alert('⚠️ 已達上限：單筆維修單最多只能同時新增 10 個產品型號。');
+            if (currentFields.length >= 10) {
+                alert('⚠️ 已達上限：單筆維修單最多只能同時新增 10 個商品型號。');
                 return;
             }
 
+            // 建立一組全新橫向延伸的輸入元件
             const newGroup = document.createElement('div');
-            newGroup.className = "product-group flex items-center space-x-1 border-l border-slate-300 pl-2 ml-1";
+            newGroup.className = "product-group flex items-center space-x-2 border-l border-slate-300 pl-2 ml-1";
             newGroup.innerHTML = `
-                <input type="text" placeholder="型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                 <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                <button type="button" onclick="removeProductField(this)" class="text-rose-500 hover:bg-rose-50 text-sm font-bold px-1 rounded transition">✕</button>
+                <button type="button" onclick="removeProductField(this)" class="text-rose-500 hover:text-rose-700 font-bold text-sm px-1">✕</button>
             `;
             container.appendChild(newGroup);
         }
 
-        // 移除指定的型號輸入框
-        function removeProductField(buttonElement) {
-            const group = buttonElement.parentElement;
+        // 移除特定的產品型號輸入框
+        function removeProductField(button) {
+            const group = button.parentElement;
             group.remove();
+        }
+
+        // 重置所有型號輸入框，還原為最初的 1 組
+        function resetProductFields() {
+            const container = document.getElementById('productFieldsContainer');
+            container.innerHTML = `
+                <div class="product-group flex items-center space-x-2">
+                    <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                    <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                </div>
+            `;
         }
 
         function resetReceivedDate() {
@@ -471,24 +475,26 @@
             const recordId = document.getElementById('repairRecordId').value;
             const rawCost = document.getElementById('repairCost').value;
             
-            // 提取所有動態輸入的型號與數量
+            // 🌟 提取多組商品型號與數量，並整齊合併為單一欄位字串
             const modelInputs = document.getElementsByClassName('product-model-input');
             const qtyInputs = document.getElementsByClassName('product-qty-input');
-            let productsArray = [];
-
+            let productList = [];
+            
             for (let i = 0; i < modelInputs.length; i++) {
                 const mVal = modelInputs[i].value.trim();
-                const qVal = Number(qtyInputs[i].value);
+                const qVal = qtyInputs[i].value;
                 if (mVal) {
-                    productsArray.push({ model: mVal, qty: qVal });
+                    productList.push(`${mVal} (${qVal}件)`);
                 }
             }
-            
+            const combinedProducts = productList.join(', ');
+
             const formData = {
                 receivedDate: document.getElementById('receivedDate').value,
                 customerName: document.getElementById('customerName').value.trim(),
                 customerPhone: document.getElementById('customerPhone').value.trim(),
-                products: productsArray, // 儲存多型號陣列
+                productModel: combinedProducts, // 合併後的型號與件數欄位
+                quantity: modelInputs.length,  // 記錄共有幾項品項
                 issueReason: document.getElementById('issueReason').value.trim(),
                 replacedParts: document.getElementById('replacedParts').value.trim() || '無',
                 repairCost: rawCost !== '' ? Number(rawCost) : null,
@@ -510,17 +516,8 @@
             }
 
             localStorage.setItem('repair_records', JSON.stringify(repairRecords));
-            
-            // 重設表單與型號區域
             this.reset();
-            const container = document.getElementById('productFieldsContainer');
-            container.innerHTML = `
-                <div class="product-group flex items-center space-x-2">
-                    <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                    <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                </div>
-            `;
-            
+            resetProductFields();
             resetReceivedDate();
             refreshRepairUI();
             doRepairSearch(document.getElementById('searchPhone').value.trim());
@@ -571,7 +568,6 @@
             renderRepairRows(top10, latestTbody);
         }
 
-        // 維修單網格渲染功能
         function renderRepairRows(dataList, targetTbody) {
             targetTbody.innerHTML = '';
             dataList.forEach(record => {
@@ -581,15 +577,6 @@
                     ? `<span class="text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[11px] font-bold border border-amber-200">尚未報價</span>` 
                     : `<span class="font-mono text-slate-900 font-bold">$${record.repairCost.toLocaleString()}</span>`;
 
-                // 處理多商品型號在網格內的排版呈現 (換列顯示)
-                let productsDisplay = '';
-                if (record.products && record.products.length > 0) {
-                    productsDisplay = record.products.map(p => `<div><span class="bg-slate-100 border px-1.5 py-0.5 rounded font-bold">${p.model}</span> <span class="text-slate-400">x</span> <span class="font-bold">${p.qty}</span></div>`).join('<div class="h-1"></div>');
-                } else if (record.productModel) {
-                    // 相容舊資料格式
-                    productsDisplay = `<div><span class="bg-slate-100 border px-1.5 py-0.5 rounded font-bold">${record.productModel}</span> <span class="text-slate-400">x</span> <span class="font-bold">${record.quantity || 1}</span></div>`;
-                }
-
                 tr.innerHTML = `
                     <td class="text-center bg-slate-50/50 sticky left-0 z-10 border-r border-slate-300">
                         <button onclick="startRepairEdit(${record.id})" class="text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-300 px-2 py-0.5 rounded text-[11px] font-bold transition">✏️ 修改</button>
@@ -598,7 +585,8 @@
                     <td class="font-bold text-slate-900 font-mono">${record.receivedDate}</td>
                     <td class="font-extrabold text-slate-800">${record.customerName}</td>
                     <td class="font-mono font-bold text-blue-700 bg-blue-50/50">${record.customerPhone}</td>
-                    <td class="whitespace-normal min-w-[180px]">${productsDisplay}</td>
+                    <td><span class="bg-blue-50 border border-blue-200 text-blue-800 px-2 py-0.5 rounded font-bold text-xs">${record.productModel}</span></td>
+                    <td class="text-center font-bold">${record.quantity} 項品類</td>
                     <td class="text-rose-600 font-bold whitespace-normal max-w-xs">${record.issueReason}</td>
                     <td class="text-emerald-700 font-bold bg-emerald-50/30">${record.replacedParts}</td>
                     <td class="text-right pr-4">${costDisplay}</td>
@@ -609,7 +597,6 @@
             });
         }
 
-        // 修改時反向還原生成多個型號節點
         function startRepairEdit(id) {
             const record = repairRecords.find(r => r.id === id);
             if (!record) return;
@@ -618,37 +605,43 @@
             document.getElementById('receivedDate').value = record.receivedDate;
             document.getElementById('customerName').value = record.customerName;
             document.getElementById('customerPhone').value = record.customerPhone;
+            
+            // 編輯舊資料時，先將合併字串還原填入第一格型號
+            resetProductFields();
+            const container = document.getElementById('productFieldsContainer');
+            const rawModelStr = record.productModel; // 格式如: "A (1件), B (2件)"
+            
+            const parts = rawModelStr.split(', ');
+            if (parts.length > 0) {
+                const firstPart = parts[0].match(/(.*)\s\((\d+)件\)/);
+                if (firstPart) {
+                    container.getElementsByClassName('product-model-input')[0].value = firstPart[1];
+                    container.getElementsByClassName('product-qty-input')[0].value = firstPart[2];
+                } else {
+                    container.getElementsByClassName('product-model-input')[0].value = rawModelStr;
+                }
+
+                // 若原本包含多個型號，動態還原多個格子
+                for (let i = 1; i < parts.length; i++) {
+                    const extraPart = parts[i].match(/(.*)\s\((\d+)件\)/);
+                    if (extraPart) {
+                        const newGroup = document.createElement('div');
+                        newGroup.className = "product-group flex items-center space-x-2 border-l border-slate-300 pl-2 ml-1";
+                        newGroup.innerHTML = `
+                            <input type="text" value="${extraPart[1]}" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            <input type="number" min="1" value="${extraPart[2]}" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            <button type="button" onclick="removeProductField(this)" class="text-rose-500 hover:text-rose-700 font-bold text-sm px-1">✕</button>
+                        `;
+                        container.appendChild(newGroup);
+                    }
+                }
+            }
+
             document.getElementById('issueReason').value = record.issueReason;
             document.getElementById('replacedParts').value = record.replacedParts === '無' ? '' : record.replacedParts;
             document.getElementById('repairCost').value = record.repairCost !== null ? record.repairCost : '';
             document.getElementById('pickupDate').value = record.pickupDate === '未取件' ? '' : record.pickupDate;
             document.getElementById('shippingNo').value = record.shippingNo === '無' ? '' : record.shippingNo;
-
-            // 還原生成型號與數量輸入框
-            const container = document.getElementById('productFieldsContainer');
-            container.innerHTML = '';
-
-            if (record.products && record.products.length > 0) {
-                record.products.forEach((p, idx) => {
-                    const group = document.createElement('div');
-                    group.className = "product-group flex items-center space-x-1" + (idx > 0 ? " border-l border-slate-300 pl-2 ml-1" : "");
-                    group.innerHTML = `
-                        <input type="text" value="${p.model}" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                        <input type="number" value="${p.qty}" min="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                        ${idx > 0 ? '<button type="button" onclick="removeProductField(this)" class="text-rose-500 hover:bg-rose-50 text-sm font-bold px-1 rounded transition">✕</button>' : ''}
-                    `;
-                    container.appendChild(group);
-                });
-            } else {
-                // 還原舊單筆型號格式
-                const group = document.createElement('div');
-                group.className = "product-group flex items-center space-x-2";
-                group.innerHTML = `
-                    <input type="text" value="${record.productModel || ''}" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                    <input type="number" value="${record.quantity || 1}" min="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                `;
-                container.appendChild(group);
-            }
 
             document.getElementById('repairFormTitle').innerHTML = '✏️ <span class="text-amber-700 font-bold">正在修改</span>';
             document.getElementById('cancelRepairEditBtn').classList.remove('hidden');
@@ -662,15 +655,7 @@
         function cancelRepairEdit() {
             document.getElementById('repairForm').reset();
             document.getElementById('repairRecordId').value = '';
-            
-            const container = document.getElementById('productFieldsContainer');
-            container.innerHTML = `
-                <div class="product-group flex items-center space-x-2">
-                    <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                    <input type="number" min="1" value="1" required class="product-qty-input w-14 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                </div>
-            `;
-
+            resetProductFields();
             resetReceivedDate();
             document.getElementById('repairFormTitle').textContent = '📝 建立新維修單';
             document.getElementById('cancelRepairEditBtn').classList.add('hidden');
@@ -694,28 +679,18 @@
             doRepairSearch('');
         }
 
-        // 匯出包含多商品的維修單至 Excel (多商品在同一儲存格內以換行符整齊排列)
         function exportRepairToExcel() {
             if (repairRecords.length === 0) {
                 alert('無紀錄可供匯出');
                 return;
             }
-            const excelHeader = [["送修日期", "客戶姓名", "電話號碼", "產品型號與數量", "故障原因", "更換零件", "維修費用", "取件日期", "託運單號"]];
-            
-            const excelRows = repairRecords.map(r => {
-                let prodString = '';
-                if (r.products && r.products.length > 0) {
-                    prodString = r.products.map(p => `${p.model} (${p.qty}件)`).join('\n');
-                } else {
-                    prodString = `${r.productModel || ''} (${r.quantity || 1}件)`;
-                }
-
-                return [
-                    r.receivedDate, r.customerName, r.customerPhone, prodString, r.issueReason, r.replacedParts,
-                    r.repairCost !== null ? Number(r.repairCost) : "尚未報價", r.pickupDate, r.shippingNo
-                ];
-            });
-
+            const excelHeader = [["送修日期", "客戶姓名", "電話號碼", "產品型號 (數量)", "總項數", "故障原因", "更換零件", "維修費用", "取件日期", "託運單號"]];
+            const excelRows = repairRecords.map(r => [
+                r.receivedDate, r.customerName, r.customerPhone, r.productModel,
+                Number(r.quantity), r.issueReason, r.replacedParts,
+                r.repairCost !== null ? Number(r.repairCost) : "尚未報價",
+                r.pickupDate, r.shippingNo
+            ]);
             const finalData = excelHeader.concat(excelRows);
             const worksheet = XLSX.utils.aoa_to_sheet(finalData);
             const workbook = XLSX.utils.book_new();
@@ -748,7 +723,7 @@
 
                     let importCount = 0;
                     let skipCount = 0;
-                    const startRow = (isNaN(Number(jsonData[0][3])) && jsonData.length > 1) ? 1 : 0;
+                    const startRow = (isNaN(Number(jsonData[0][0])) && jsonData.length > 1) ? 1 : 0;
 
                     for (let i = startRow; i < jsonData.length; i++) {
                         const row = jsonData[i];
@@ -933,6 +908,10 @@
             btn.className = "bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
         }
 
+        document.getElementById('searchPartKeyword').addEventListener('input', function(e) {
+            doPartSearch(e.target.value.trim());
+        });
+
         function deletePartRecord(id) {
             if (confirm('確定刪除？')) {
                 if (document.getElementById('partRecordId').value == id) cancelPartEdit();
@@ -944,4 +923,9 @@
         }
 
         function clearPartSearch() {
-            document.getElementById('searchPart
+            document.getElementById('searchPartKeyword').value = '';
+            doPartSearch('');
+        }
+    </script>
+</body>
+</html>
