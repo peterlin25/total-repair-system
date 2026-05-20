@@ -4,14 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>雲端即時同步管理系統</title>
-    <!-- 引入 Tailwind CSS -->
     <script src="https://tailwindcss.com"></script>
     
-    <!-- 核心：引入 Google Firebase 官方雲端資料庫核心套件 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-    <!-- 擴充：引入 SheetJS 用於解析 Excel 檔案 -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -37,7 +34,6 @@
 </head>
 <body class="bg-slate-100 font-sans antialiased pb-24 text-slate-800">
 
-    <!-- ==================== 密碼驗證遮罩層 ==================== -->
     <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-4">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-6 border border-slate-100">
             <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-2xl mx-auto shadow-sm">🔒</div>
@@ -51,20 +47,16 @@
         </div>
     </div>
 
-    <!-- 隱藏的檔案選擇器 (用於 Excel 匯入) -->
     <input type="file" id="repairExcelInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleRepairExcel(event)">
     <input type="file" id="partExcelInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="handlePartExcel(event)">
 
-    <!-- ==================== 核心系統網頁內容 ==================== -->
     <div id="mainContent" class="hidden opacity-0 transition-opacity duration-300">
         
-        <!-- 頂部導覽列 -->
         <header class="bg-slate-900 text-white shadow-sm sticky top-0 z-50">
             <div class="max-w-[95%] mx-auto px-6 py-4 flex justify-between items-center flex-wrap gap-4">
                 <h1 class="text-xl font-bold tracking-wider flex items-center gap-2">☁️ <span>維修與零件雲端綜合面板</span></h1>
                 
                 <div class="flex items-center flex-wrap gap-3">
-                    <!-- 匯入功能按鈕組 -->
                     <div class="flex space-x-2">
                         <button onclick="document.getElementById('repairExcelInput').click()" class="bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-500 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
                             📥 匯入維修 Excel
@@ -74,7 +66,6 @@
                         </button>
                     </div>
                     <div class="text-slate-600 font-bold select-none">｜</div>
-                    <!-- 匯出功能按鈕組 -->
                     <div class="flex space-x-2">
                         <button onclick="exportRepairToCSV()" class="bg-blue-700 hover:bg-blue-800 text-white border border-blue-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
                             📊 匯出全部維修單
@@ -88,16 +79,13 @@
             </div>
         </header>
 
-        <!-- 主區塊 -->
         <main class="max-w-[95%] mx-auto px-6 mt-8 space-y-12">
             
-            <!-- ==================== 【綜合管理：上半部 - 💼 維修客戶管理區】 ==================== -->
             <div class="space-y-6">
                 <div class="border-l-4 border-blue-600 pl-3">
                     <h2 class="text-lg font-black text-slate-800 tracking-wide">💼 維修客戶管理系統區 (雲端即時同步)</h2>
                 </div>
 
-                <!-- 維修單輸入（單行橫向） -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                         <h2 id="repairFormTitle" class="text-sm font-bold text-slate-700">📝 建立新維修單</h2>
@@ -123,7 +111,6 @@
                             </div>
                             <div class="text-slate-300 font-bold text-base select-none">｜</div>
                             
-                            <!-- 動態產品型號與數量容器 -->
                             <div id="productFieldsContainer" class="flex items-center space-x-2 bg-blue-50 p-1.5 rounded-xl border border-blue-200">
                                 <div class="product-group flex items-center space-x-2">
                                     <input type="text" placeholder="產品型號" required class="product-model-input w-36 px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-500">
@@ -171,7 +158,6 @@
                     </div>
                 </section>
 
-                <!-- 維修電話搜尋看板 -->
                 <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-3">
                     <div class="text-xs font-bold text-slate-400 select-none tracking-wider">〔以電話號碼搜尋〕</div>
                     <div class="flex gap-3">
@@ -205,7 +191,6 @@
                     </div>
                 </section>
 
-                <!-- 最新 10 筆維修單列表 -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="px-6 py-3 bg-slate-800 text-white flex justify-between items-center">
                         <h2 class="text-xs font-bold tracking-wide">📋 最新 10 筆維修資料 (雲端即時連線)</h2>
@@ -236,16 +221,13 @@
                 </section>
             </div>
 
-            <!-- 實體大分隔線 -->
             <hr class="border-t-4 border-dashed border-slate-300 my-8">
 
-            <!-- ==================== 【綜合管理：下半部 - ⚙️ 零件庫存管理區】 ==================== -->
             <div class="space-y-6">
                 <div class="border-l-4 border-emerald-600 pl-3">
                     <h2 class="text-lg font-black text-slate-800 tracking-wide">⚙️ 零件庫存管理系統區 (雲端即時同步)</h2>
                 </div>
 
-                <!-- 零件輸入（單行橫向） -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="px-6 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                         <h2 id="partFormTitle" class="text-sm font-bold text-slate-700">⚙️ 新增零件資料</h2>
@@ -294,7 +276,6 @@
                     </div>
                 </section>
 
-                <!-- 零件搜尋大看板 -->
                 <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
                     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b pb-3 border-slate-100">
                         <h2 class="text-sm font-bold text-slate-700">🔍 搜尋零件庫存</h2>
@@ -327,7 +308,6 @@
                     </div>
                 </section>
 
-                <!-- 最新 10 筆零件列表 -->
                 <section class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="px-6 py-3 bg-slate-700 text-white flex justify-between items-center">
                         <h2 class="text-xs font-bold tracking-wide">📋 最新 10 筆零件資料 (雲端即時連線)</h2>
@@ -357,7 +337,6 @@
         </main>
     </div>
 
-    <!-- ==================== 核心 JavaScript ==================== -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBe5SYF7iyhs6Tq70OpRKGS63jWkyeWvxw",
@@ -410,7 +389,6 @@
                     Object.keys(data).forEach(key => {
                         repairRecords.push({ firebaseKey: key, ...data[key] });
                     });
-                    // 確保依據獨立 ID 由新到舊排序
                     repairRecords.sort((a, b) => (b.id || 0) - (a.id || 0));
                 }
                 refreshRepairUI();
@@ -484,20 +462,52 @@
             isFirebaseInitialized = false;
         }
 
-        // ==================== 📥 核心優化：Excel 模糊欄位配對與進度提示 ====================
+        // ==================== 📥 [防呆再升級] Excel 模糊欄位配對與進度提示 ====================
         
-        // 輔助函式：用來在大大小小、可能打錯字或空格的標題中尋找正確資料
-        function findExcelValue(rowObj, keysToTry) {
+        function findExcelValue(rowObj, keysToTry, checkContains = false) {
+            // 1. 完全或去空格精準匹配
             for (let k of keysToTry) {
                 if (rowObj[k] !== undefined) return rowObj[k];
-                // 去除前後空格與內部空格再比對一次
                 for (let actualKey in rowObj) {
                     if (actualKey.replace(/\s+/g, '') === k.replace(/\s+/g, '')) {
                         return rowObj[actualKey];
                     }
                 }
             }
+            // 2. 模糊包含匹配 (例如處理 "產品型號(" 這種滑掉的標題)
+            if (checkContains) {
+                for (let k of keysToTry) {
+                    for (let actualKey in rowObj) {
+                        if (actualKey.includes(k)) {
+                            return rowObj[actualKey];
+                        }
+                    }
+                }
+            }
             return undefined;
+        }
+
+        // 解析並格式化日期，使其支援多元格式 (如 2026/05/20 或 May-26 等)
+        function parseExcelDate(dateVal) {
+            if (!dateVal) return new Date().toISOString().split('T')[0];
+            let dStr = String(dateVal).trim();
+            
+            // 如果是 Excel 的天數數字
+            if (!isNaN(dStr) && dStr.length > 4) {
+                const dateObj = XLSX.SSF.parse_date_code(Number(dStr));
+                if (dateObj) {
+                    const mm = String(dateObj.m).padStart(2, '0');
+                    const dd = String(dateObj.d).padStart(2, '0');
+                    return `${dateObj.y}-${mm}-${dd}`;
+                }
+            }
+
+            // 嘗試常規 JS 解析
+            const parsed = Date.parse(dStr);
+            if (!isNaN(parsed)) {
+                return new Date(parsed).toISOString().split('T')[0];
+            }
+            return dStr; // 解析失敗則保留原樣字串
         }
 
         function handleRepairExcel(event) {
@@ -525,19 +535,19 @@
 
                     let successCount = 0;
                     jsonRows.forEach((row, index) => {
-                        // 取得模糊匹配的值
-                        const productRaw = findExcelValue(row, ['產品型號(數量)', '產品型號', '型號']);
+                        // 產品型號特別開啟包含模糊配對 "型號"
+                        const productRaw = findExcelValue(row, ['產品型號(數量)', '產品型號', '型號'], true);
                         const productStr = productRaw ? String(productRaw).trim() : '未登記型號';
                         
-                        let totalQty = 1;
+                        let totalQty = parseInt(findExcelValue(row, ['總項數', '數量'])) || 1;
                         const qtyMatch = productStr.match(/\((\d+)件\)/);
-                        if (qtyMatch) {
+                        if (qtyMatch && !findExcelValue(row, ['總項數', '數量'])) {
                             totalQty = parseInt(qtyMatch[1]) || 1;
                         }
 
                         const formData = {
                             id: Date.now() + index, 
-                            receivedDate: String(findExcelValue(row, ['送修日期', '送送日期', '日期']) || new Date().toISOString().split('T')[0]).trim(),
+                            receivedDate: parseExcelDate(findExcelValue(row, ['送修日期', '送送日期', '日期'])),
                             customerName: String(findExcelValue(row, ['客戶姓名', '姓名']) || '').trim(),
                             customerPhone: String(findExcelValue(row, ['電話號碼', '電話', '手機']) || '').trim(),
                             products: productStr,
@@ -590,7 +600,7 @@
                     jsonRows.forEach((row, index) => {
                         const formData = {
                             id: Date.now() + index,
-                            partNo: String(findExcelValue(row, ['零件編號', '編號', '料號']) || '').trim().toUpperCase(),
+                            partNo: String(findExcelValue(row, ['零件編號', '編號', '料號'], true) || '').trim().toUpperCase(),
                             partNameZh: String(findExcelValue(row, ['中文名稱', '中文名', '品名']) || '').trim(),
                             partNameEn: String(findExcelValue(row, ['英文名稱', '英文名']) || '').trim(),
                             partQty: parseInt(findExcelValue(row, ['庫存數量', '庫存', '數量'])) || 0,
