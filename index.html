@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>維修與零件一體化管理系統</title>
+    <title>管理系統</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://tailwindcss.com"></script>
-    <!-- 引入 SheetJS -->
-    <script src="https://jsdelivr.net"></script>
     <style>
         .excel-table th, .excel-table td {
             border: 1px solid #cbd5e1;
@@ -57,11 +55,12 @@
                 
                 <div class="flex items-center flex-wrap gap-3">
                     <div class="flex space-x-2">
-                        <button onclick="exportRepairToExcel()" class="bg-blue-700 hover:bg-blue-800 text-white border border-blue-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
-                            📊 匯出全部維修單
+                        <!-- 🌟 功能修改：改為安全的原生 CSV 表格導出按鈕 -->
+                        <button onclick="exportRepairToCSV()" class="bg-blue-700 hover:bg-blue-800 text-white border border-blue-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
+                            📊 匯出全部維修單 (Excel 開啟)
                         </button>
-                        <button onclick="exportPartToExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
-                            📊 匯出全部零件庫
+                        <button onclick="exportPartToCSV()" class="bg-emerald-700 hover:bg-emerald-800 text-white border border-emerald-600 text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
+                            📊 匯出全部零件庫 (Excel 開啟)
                         </button>
                     </div>
                     <button onclick="lockSystem()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-md font-medium border border-slate-700 transition">🔒 登出</button>
@@ -276,18 +275,10 @@
                     </div>
                 </section>
 
-                <!-- 零件搜尋與 Excel 批量匯入大看板 -->
+                <!-- 零件搜尋大看板 -->
                 <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
                     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b pb-3 border-slate-100">
                         <h2 class="text-sm font-bold text-slate-700">🔍 搜尋零件庫存</h2>
-                        
-                        <div class="bg-emerald-50/50 p-2 rounded-xl border border-emerald-200 flex items-center space-x-3">
-                            <span class="text-emerald-800 text-xs font-bold">📥 匯入零件 Excel</span>
-                            <label class="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition">
-                                選擇檔案
-                                <input type="file" id="excelImportFile" accept=".xlsx, .xls" class="hidden" onchange="handleExcelImport(this)">
-                            </label>
-                        </div>
                     </div>
 
                     <div class="flex gap-3">
@@ -347,7 +338,7 @@
 
         </main>
     </div>
-    <!-- ==================== 核心 JavaScript 邏輯控制 (修正錯位與匯出) ==================== -->
+    <!-- ==================== 核心 JavaScript 邏輯控制 (原生 CSV 下載版) ==================== -->
     <script>
         const CORRECT_PASSWORD = '10710056'; 
         let repairRecords = [];
@@ -408,7 +399,6 @@
             document.getElementById('partForm').reset();
             document.getElementById('searchPhone').value = '';
             document.getElementById('searchPartKeyword').value = '';
-            document.getElementById('excelImportFile').value = '';
             resetProductFields();
 
             document.getElementById('systemPassword').value = '';
@@ -456,7 +446,7 @@
 
         function resetReceivedDate() {
             const dateInput = document.getElementById('receivedDate');
-            if (dateInput) dateInput.value = new Date().toISOString().split('T');
+            if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
         }
 
         document.getElementById('repairForm').addEventListener('submit', function(e) {
@@ -474,7 +464,7 @@
                 const qVal = qtyInputs[i].value;
                 if (mVal) productList.push(`${mVal} (${qVal}件)`);
             }
-            const combinedProducts = productList.join(', ');
+            const combinedProducts = productList.join(' / ');
 
             const formData = {
                 receivedDate: document.getElementById('receivedDate').value,
@@ -556,7 +546,7 @@
             renderRepairRows(top10, latestTbody);
         }
 
-        // 🌟【完美對齊渲染引擎】保證標頭 12 欄與這裡輸出的 12 個 <td> 絕對 1:1 精準對齊，徹底消滅位移
+        // 🌟【12欄完美對齊渲染】徹底排除擠壓前端錯落Bug
         function renderRepairRows(dataList, targetTbody) {
             targetTbody.innerHTML = '';
             dataList.forEach(record => {
@@ -604,7 +594,7 @@
             
             resetProductFields();
             const container = document.getElementById('productFieldsContainer');
-            const parts = record.productModel.split(', ');
+            const parts = record.productModel.split(' / ');
             
             if (parts.length > 0) {
                 const firstPart = parts[0];
@@ -644,7 +634,7 @@
             document.getElementById('replacedParts').value = record.replacedParts === '無' ? '' : record.replacedParts;
             document.getElementById('repairCost').value = record.repairCost !== null ? record.repairCost : '';
             document.getElementById('pickupDate').value = (record.pickupDate === '未通知' || record.pickupDate === '未取件') ? '' : record.pickupDate;
-            document.getElementById('customerPickupDate').value = (record.customerPickupDate === '未取件' || record.customerPickupDate === '未取走') ? '' : record.customerPickupDate;
+            document.getElementById('customerPickupDate').value = (record.customerPickupDate === '未取走') ? '' : record.customerPickupDate;
             document.getElementById('shippingNo').value = record.shippingNo === '無' ? '' : record.shippingNo;
 
             document.getElementById('repairFormTitle').innerHTML = '✏️ <span class="text-amber-700 font-bold">正在修改維修單</span>';
@@ -683,104 +673,46 @@
             doRepairSearch('');
         }
 
-        // 🌟【修正後的 Excel 匯出引擎】重新規劃完全相容的結構，確保點擊必觸發下載
-        function exportRepairToExcel() {
+        // 🌟【終極原生 CSV 匯出引擎】免第三方套件、免網路，強迫瀏覽器實體強震下載！
+        function exportRepairToCSV() {
             if (repairRecords.length === 0) {
                 alert('無紀錄可供匯出');
                 return;
             }
-            const excelHeader = [["送修日期", "客戶姓名", "電話號碼", "產品型號 (數量)", "總項數", "故障原因", "更換零件", "維修費用", "通知取件日期", "客戶取走日期", "託運單號"]];
-            const excelRows = repairRecords.map(r => [
-                r.receivedDate || "", 
-                r.customerName || "", 
-                r.customerPhone || "", 
-                r.productModel || "",
-                Number(r.quantity || 1), 
-                r.issueReason || "", 
-                r.replacedParts || "無",
-                r.repairCost !== null ? Number(r.repairCost) : "尚未報價",
-                r.pickupDate || "未通知", 
-                r.customerPickupDate || "未取走", 
-                r.shippingNo || "無"
-            ]);
-            const finalData = excelHeader.concat(excelRows);
-            const worksheet = XLSX.utils.aoa_to_sheet(finalData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "維修紀錄");
+            
+            // 建立 CSV 內容
+            let csvContent = "送修日期,客戶姓名,電話號碼,產品型號 (數量),總項數,故障原因,更換零件,維修費用,通知取件日期,客戶取走日期,託運單號\n";
+            
+            repairRecords.forEach(r => {
+                let row = [
+                    r.receivedDate,
+                    r.customerName,
+                    `="${r.customerPhone}"`, // 防止 Excel 數字自動去零
+                    `"${r.productModel.replace(/"/g, '""')}"`,
+                    r.quantity || 1,
+                    `"${r.issueReason.replace(/"/g, '""')}"`,
+                    `"${r.replacedParts.replace(/"/g, '""')}"`,
+                    r.repairCost !== null ? r.repairCost : "尚未報價",
+                    r.pickupDate,
+                    r.customerPickupDate,
+                    `="${r.shippingNo}"`
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            // 🌟 核心關鍵：加入 UTF-8 BOM (\uFEFF) 確保 Excel 雙擊打開百分之百不變亂碼
+            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
             
             const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-            XLSX.writeFile(workbook, `維修客戶單_${dateStr}.xlsx`);
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `維修單報表_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // ==================== 📦 [模組二] 零件庫存管理核心控制邏輯 ====================
-        function handleExcelImport(inputElement) {
-            const files = inputElement.files;
-            if (!files || files.length === 0) return;
-
-            const file = files[0];
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-                    
-                    if (jsonData.length === 0) {
-                        alert('檔案無數據');
-                        inputElement.value = '';
-                        return;
-                    }
-
-                    let importCount = 0;
-                    let skipCount = 0;
-                    const startRow = (isNaN(Number(jsonData[0][3])) && jsonData.length > 1) ? 1 : 0;
-
-                    for (let i = startRow; i < jsonData.length; i++) {
-                        const row = jsonData[i];
-                        if (!row || String(row[0]).trim() === '') continue; 
-
-                        const pNo = String(row[0]).trim();
-                        const pNameZh = row[1] !== undefined ? String(row[1]).trim() : '未命名零件';
-                        const pNameEn = row[2] !== undefined ? String(row[2]).trim() : 'N/A';
-                        const pQty = (row[3] === undefined || isNaN(Number(row[3]))) ? 0 : Math.max(0, Number(row[3]));
-                        const pCabinet = row[4] !== undefined ? String(row[4]).trim() : '未歸位';
-                        const pCost = (row[5] === undefined || isNaN(Number(row[5]))) ? 0 : Math.max(0, Number(row[5]));
-                        const pPrice = (row[6] === undefined || isNaN(Number(row[6]))) ? 0 : Math.max(0, Number(row[6]));
-
-                        const targetIdx = partRecords.findIndex(p => p.partNo.toLowerCase() === pNo.toLowerCase());
-
-                        if (targetIdx !== -1) {
-                            partRecords[targetIdx].partQty += pQty; 
-                            partRecords[targetIdx].partNameZh = pNameZh; 
-                            partRecords[targetIdx].partNameEn = pNameEn;
-                            partRecords[targetIdx].cabinetNo = pCabinet;
-                            partRecords[targetIdx].partCost = pCost;
-                            partRecords[targetIdx].partPrice = pPrice;
-                            skipCount++;
-                        } else {
-                            partRecords.unshift({
-                                id: Date.now() + i, partNo: pNo, partNameZh: pNameZh, partNameEn: pNameEn,
-                                partQty: pQty, cabinetNo: pCabinet, partCost: pCost, partPrice: pPrice
-                            });
-                            importCount++;
-                        }
-                    }
-
-                    localStorage.setItem('part_records', JSON.stringify(partRecords));
-                    refreshPartUI();
-                    alert(`匯入完成\n新建立：${importCount} 項 / 已加總：${skipCount} 項`);
-                    inputElement.value = '';
-                } catch (err) {
-                    alert('匯入失敗');
-                    inputElement.value = '';
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
         document.getElementById('partForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
@@ -922,22 +854,40 @@
             btn.className = "bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition h-[36px]";
         }
 
-        function exportPartToExcel() {
+        function clearPartSearch() {
+            document.getElementById('searchPartKeyword').value = '';
+            doPartSearch('');
+        }
+
+        // 🌟【終極原生 CSV 匯出零件引擎】免外部雲端套件，強迫瀏覽器實體下載
+        function exportPartToCSV() {
             if (partRecords.length === 0) {
                 alert('無資料可供匯出');
                 return;
             }
-            const excelHeader = [["零件編號", "中文名稱", "英文名稱", "庫存數量", "存放櫃號", "成本價 (TWD)", "對外售價 (TWD)"]];
-            const excelRows = partRecords.map(p => [
-                p.partNo, p.partNameZh, p.partNameEn, Number(p.partQty), p.cabinetNo, Number(p.partCost), Number(p.partPrice)
-            ]);
-            const finalData = excelHeader.concat(excelRows);
-            const worksheet = XLSX.utils.aoa_to_sheet(finalData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "零件庫存");
+            let csvContent = "零件編號,中文名稱,英文名稱,庫存數量,存放櫃號,成本價 (TWD),對外售價 (TWD)\n";
             
+            partRecords.forEach(p => {
+                let row = [
+                    `="${p.partNo}"`,
+                    `"${p.partNameZh.replace(/"/g, '""')}"`,
+                    `"${p.partNameEn.replace(/"/g, '""')}"`,
+                    p.partQty,
+                    `="${p.cabinetNo}"`,
+                    p.partCost,
+                    p.partPrice
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
             const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-            XLSX.writeFile(workbook, `零件庫存_${dateStr}.xlsx`);
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `零件庫存報表_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
